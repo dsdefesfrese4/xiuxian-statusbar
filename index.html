@@ -2504,7 +2504,7 @@ const Fe = (0, l.reactive)({
     beastFilter: 'all',
     lightboxImage: null,
     toast: '',
-    appCollapsed: !1,
+    appCollapsed: !0,
     editMode: !1,
     settingsOpen: !1,
     overviewOpen: null,
@@ -2517,6 +2517,10 @@ const Fe = (0, l.reactive)({
     assetOpen: {},
     facilityOpen: {},
     relationOpen: {},
+    equipPosFilter: 'all',
+    assetRegionFilter: 'all',
+    npcStage: {},
+    relationFilter: 'all',
     genitalOpen: {},
     confirmDelete: null,
     characterRefinement: null,
@@ -3055,6 +3059,15 @@ const Zn = () =>
     for (const [n, a] of Object.entries(o)) _n(a?.标签, f) !== null && (r[n] = a);
     return r;
   }),
+  ut2 = (0, l.computed)(() => {
+    const e = ie(),
+      byType = (0, l.unref)(ut),
+      pf = Fe.equipPosFilter;
+    if ('all' === pf) return byType;
+    const r = {};
+    for (const [n, a] of Object.entries(byType)) String(a?.位置 || '') === pf && (r[n] = a);
+    return r;
+  }),
   EquipTagKeys = (0, l.computed)(() => {
     const e = ie(),
       s = new Set();
@@ -3574,6 +3587,7 @@ const vt = (e) => {
         const assets = (0, l.unref)(n).data.固定资产 || {};
         const edit = (0, l.unref)(Fe).editMode;
         const REGIONS = ['中原', '南疆', '北境', '西域', '东土'];
+        const caret = (op) => h('span', { class: 'xy-collapse-caret' }, op ? '▾' : '▸');
         const byKey = {};
         for (const [name, a] of Object.entries(assets)) {
           const loc = a?.所在地 || {};
@@ -3586,7 +3600,135 @@ const vt = (e) => {
         const groups = [];
         for (const k of order) if (byKey[k]) groups.push({ key: k, items: byKey[k] });
         for (const k of Object.keys(byKey)) if (!order.includes(k)) groups.push({ key: k, items: byKey[k] });
-        const caret = (op) => h('span', { class: 'xy-collapse-caret' }, op ? '▾' : '▸');
+        const regionFilter = (0, l.unref)(Fe).assetRegionFilter;
+        const REGION_CHIPS = ['all'].concat(['中原', '南疆', '北境', '西域', '东土', '灵界', '仙界', '其他'].filter((k) => groups.some((g) => g.key.endsWith(k) || g.key === k)));
+        const visible = regionFilter === 'all' ? groups : groups.filter((g) => g.key.endsWith(regionFilter) || g.key === regionFilter);
+        const chips = h(
+          'div',
+          { class: 'xy-rel-chips xy-asset-chips' },
+          REGION_CHIPS.map((key) =>
+            h(
+              'button',
+              { key, type: 'button', class: ['xy-chip', { active: regionFilter === key }], onClick: () => ((0, l.unref)(Fe).assetRegionFilter = key) },
+              [' ' + (0, l.toDisplayString)('all' === key ? '全部' : key) + ' ', h('em', null, (0, l.toDisplayString)('all' === key ? Object.keys(assets).length : groups.filter((g) => g.key.endsWith(key) || g.key === key).reduce((s, g) => s + g.items.length, 0)))],
+            ),
+          ),
+        );
+        const facilityRow = (name, a, fname, f) => {
+          const fOpen = !!(0, l.unref)(Fe).facilityOpen[name + '::' + fname] || edit;
+          return h('div', { key: fname, class: ['xy-facility-row', { open: fOpen }] }, [
+            h(
+              'button',
+              {
+                type: 'button',
+                class: 'xy-facility-row-toggle',
+                title: fOpen ? '收起设施' : '展开设施',
+                onClick: (0, l.withModifiers)(() => (0, l.unref)(xyToggle)('facilityOpen', name + '::' + fname), ['stop']),
+              },
+              [
+                h('span', { class: 'xy-facility-name' }, [h(xt, { 'model-value': String(fname), label: '设施名', 'onUpdate:modelValue': (v) => i(a.设施, String(fname), String(v), '设施') })]),
+                f?.每月产出 ? h('span', { class: 'xy-facility-yield' }, (0, l.toDisplayString)(f.每月产出)) : null,
+                caret(fOpen),
+              ],
+            ),
+            fOpen
+              ? h('div', { class: 'xy-facility-row-body' }, [
+                  !(0, l.unref)(o()).isEmpty(f?.效果) || edit
+                    ? h('div', { class: 'xy-facility-effect' }, [h(_t, { modelValue: f.效果, 'onUpdate:modelValue': (v) => (f.效果 = v) })])
+                    : null,
+                  h('div', { class: 'xy-facility-date' }, [
+                    h('span', null, '上次收取：'),
+                    f?.上次收取日期
+                      ? '修仙历' + (0, l.toDisplayString)(f.上次收取日期.年) + '年' + (0, l.toDisplayString)(f.上次收取日期.月) + '月' + (0, l.toDisplayString)(f.上次收取日期.日) + '日 · ' + (0, l.toDisplayString)(f.上次收取日期.时辰)
+                      : h('span', null, '从未收取'),
+                  ]),
+                ])
+              : null,
+          ]);
+        };
+        const facilityFold = (name, a) => {
+          const fListOpen = !!(0, l.unref)(Fe).assetOpen[name + '::设施列表'] || edit;
+          return h('div', { class: 'xy-effect-fold xy-facility-fold' }, [
+            h(
+              'button',
+              {
+                type: 'button',
+                class: ['xy-collapse-head xy-collapse-sub', { open: fListOpen }],
+                onClick: (0, l.withModifiers)(() => (0, l.unref)(xyToggle)('assetOpen', String(name) + '::设施列表'), ['stop']),
+              },
+              [h('span', { class: 'xy-collapse-title' }, '设施'), h('span', { class: 'xy-collapse-count' }, (0, l.toDisplayString)(Object.keys(a?.设施 || {}).length)), caret(fListOpen)],
+            ),
+            (0, l.withDirectives)(
+              h('div', { class: 'xy-facility-list' }, [
+                (0, l.unref)(o()).isEmpty(a?.设施) && !edit
+                  ? h('div', { class: 'xy-asset-empty' }, '暂无设施')
+                  : Object.entries(a?.设施 || {}).map(([fname, f]) => facilityRow(name, a, fname, f)),
+                edit
+                  ? h('button', { type: 'button', class: 'xy-effect-add', onClick: () => { (a.设施 || (a.设施 = {}))[s(a.设施, '新设施')] = { 效果: {}, 每月产出: '无', 上次收取日期: null }; } }, ' ＋ 新增设施 ')
+                  : null,
+              ]),
+              [[l.vShow, fListOpen]],
+            ),
+          ]);
+        };
+        const peopleFold = (name, a) => {
+          const pOpen = !!(0, l.unref)(Fe).assetOpen[name + '::人物'];
+          return h('div', { class: 'xy-people-fold' }, [
+            h(
+              'button',
+              {
+                type: 'button',
+                class: ['xy-collapse-head xy-collapse-sub', { open: pOpen }],
+                onClick: (0, l.withModifiers)(() => (0, l.unref)(xyToggle)('assetOpen', String(name) + '::人物'), ['stop']),
+              },
+              [h('span', { class: 'xy-collapse-title' }, '所属人物'), h('span', { class: 'xy-collapse-count' }, (0, l.toDisplayString)((a?.所属人物 || []).length)), caret(pOpen)],
+            ),
+            (0, l.withDirectives)(
+              h('div', { class: 'xy-people-body' }, [
+                edit
+                  ? h(zt, { modelValue: a?.所属人物 || [], 'onUpdate:modelValue': (v) => (a.所属人物 = v), label: '所属人物' })
+                  : (a?.所属人物 || []).length
+                    ? h('span', { class: 'xy-idtags' }, (a.所属人物 || []).map((nm) => h('span', { key: nm, class: 'xy-idtag' }, (0, l.toDisplayString)(nm))))
+                    : h('span', { class: 'xy-asset-empty' }, '暂无'),
+              ]),
+              [[l.vShow, pOpen]],
+            ),
+          ]);
+        };
+        const assetBlock = (name, a) => {
+          const aOpen = !!(0, l.unref)(Fe).assetOpen[name] || edit;
+          const loc = a?.所在地 || {};
+          const type = a?.类型 || '洞府';
+          const typeChar = '宗门' === type ? '宗' : '店铺' === type ? '铺' : '洞';
+          return h('article', { key: name, class: ['xy-asset-block', 'xy-asset-' + type, { open: aOpen }] }, [
+            h('button', { type: 'button', class: 'xy-trash', title: '删除此资产', onClick: (0, l.withModifiers)(() => (0, l.unref)(at)('asset', String(name), String(name)), ['stop']) }, '×'),
+            h(
+              'button',
+              {
+                type: 'button',
+                class: 'xy-asset-block-toggle',
+                title: aOpen ? '收起资产详情' : '展开资产详情',
+                onClick: (0, l.withModifiers)(() => (0, l.unref)(xyToggle)('assetOpen', String(name)), ['stop']),
+              },
+              [
+                h('span', { class: 'xy-asset-seal', 'data-type': type }, (0, l.toDisplayString)(typeChar)),
+                h('span', { class: 'xy-asset-block-name' }, (0, l.toDisplayString)(name)),
+                a?.人员规模 ? h('span', { class: 'xy-pill xy-pill-soft' }, (0, l.toDisplayString)(a.人员规模) + '人') : null,
+                loc.世界 || loc.地域 ? h('span', { class: 'xy-pill xy-pill-soft xy-asset-loc' }, (0, l.toDisplayString)(loc.世界 || '') + (loc.地域 ? ' · ' + (0, l.toDisplayString)(loc.地域) : '')) : null,
+                caret(aOpen),
+              ],
+            ),
+            aOpen
+              ? h('div', { class: 'xy-asset-flat-body' }, [
+                  a?.现状 || edit
+                    ? h('div', { class: 'xy-asset-status' }, [h('span', { class: 'xy-asset-status-label' }, '现状：'), h(xt, { modelValue: a.现状, 'onUpdate:modelValue': (v) => (a.现状 = v), label: '现状', multiline: '', rows: 2 })])
+                    : null,
+                  facilityFold(name, a),
+                  peopleFold(name, a),
+                ])
+              : null,
+          ]);
+        };
         return h('section', { class: 'xy-page xy-page-assets' }, [
           edit
             ? h('div', { class: 'xy-asset-toolbar' }, [
@@ -3596,107 +3738,12 @@ const vt = (e) => {
             : null,
           (0, l.unref)(o()).isEmpty(assets) && !edit
             ? h('div', { class: 'xy-empty' }, [h('div', { class: 'xy-empty-mark' }, '无'), h('p', null, '暂无固定资产')])
-            : h(
-                'div',
-                { class: 'xy-asset-groups' },
-                groups.map(({ key: gkey, items }) => {
-                  const gOpen = !!(0, l.unref)(Fe).assetOpen[gkey] || edit;
-                  return h('section', { key: gkey, class: 'xy-asset-group' }, [
-                    h(
-                      'button',
-                      {
-                        type: 'button',
-                        class: ['xy-collapse-head xy-asset-group-head', { open: gOpen }],
-                        onClick: (0, l.withModifiers)(() => (0, l.unref)(xyToggle)('assetOpen', gkey), ['stop']),
-                      },
-                      [h('span', { class: 'xy-collapse-title' }, (0, l.toDisplayString)(gkey)), h('span', { class: 'xy-rel-group-count' }, (0, l.toDisplayString)(items.length)), caret(gOpen)],
-                    ),
-                    (0, l.withDirectives)(
-                      h(
-                        'div',
-                        { class: 'xy-asset-group-body' },
-                        items.map(([name, a]) => {
-                          const aOpen = !!(0, l.unref)(Fe).assetOpen[name] || edit;
-                          const loc = a?.所在地 || {};
-                          const seal = '宗门' === a?.类型 ? '宗' : '店铺' === a?.类型 ? '铺' : '洞';
-                          return h('article', { key: name, class: ['xy-asset-card xy-asset-flat', { open: aOpen }], 'data-seal': seal }, [
-                            h('button', { type: 'button', class: 'xy-trash', title: '删除此资产', onClick: (0, l.withModifiers)(() => (0, l.unref)(at)('asset', String(name), String(name)), ['stop']) }, '×'),
-                            h('div', { class: 'xy-asset-flat-head' }, [
-                              h(
-                                'button',
-                                {
-                                  type: 'button',
-                                  class: 'xy-asset-flat-toggle',
-                                  title: aOpen ? '收起资产详情' : '展开资产详情',
-                                  onClick: (0, l.withModifiers)(() => (0, l.unref)(xyToggle)('assetOpen', String(name)), ['stop']),
-                                },
-                                [
-                                  h('span', { class: 'xy-asset-name' }, (0, l.toDisplayString)(name)),
-                                  a?.类型 ? h('span', { class: 'xy-pill xy-pill-type' }, (0, l.toDisplayString)(a.类型)) : null,
-                                  a?.人员规模 ? h('span', { class: 'xy-pill xy-pill-soft' }, '规模 ' + (0, l.toDisplayString)(a.人员规模)) : null,
-                                  loc.世界 || loc.地域 ? h('span', { class: 'xy-pill xy-pill-soft xy-asset-loc' }, (0, l.toDisplayString)(loc.世界 || '') + (loc.地域 ? ' · ' + (0, l.toDisplayString)(loc.地域) : '')) : null,
-                                  caret(aOpen),
-                                ],
-                              ),
-                            ]),
-                            aOpen
-                              ? h('div', { class: 'xy-asset-flat-body' }, [
-                                  a?.现状 || edit
-                                    ? h('div', { class: 'xy-asset-status' }, [h('span', { class: 'xy-asset-status-label' }, '现状：'), h(xt, { modelValue: a.现状, 'onUpdate:modelValue': (v) => (a.现状 = v), label: '现状', multiline: '', rows: 2 })])
-                                    : null,
-                                  h('div', { class: 'xy-asset-section-title' }, '设施'),
-                                  (0, l.unref)(o()).isEmpty(a?.设施) && !edit
-                                    ? h('div', { class: 'xy-asset-empty' }, '暂无设施')
-                                    : Object.entries(a?.设施 || {}).map(([fname, f]) => {
-                                        const fOpen = !!(0, l.unref)(Fe).facilityOpen[name + '::' + fname] || edit;
-                                        return h('div', { key: fname, class: ['xy-facility xy-facility-flat', { open: fOpen }] }, [
-                                          h(
-                                            'button',
-                                            {
-                                              type: 'button',
-                                              class: 'xy-facility-flat-toggle',
-                                              title: fOpen ? '收起设施' : '展开设施',
-                                              onClick: (0, l.withModifiers)(() => (0, l.unref)(xyToggle)('facilityOpen', name + '::' + fname), ['stop']),
-                                            },
-                                            [
-                                              h('strong', null, [h(xt, { 'model-value': String(fname), label: '设施名', 'onUpdate:modelValue': (v) => i(a.设施, String(fname), String(v), '设施') })]),
-                                              f?.每月产出 ? h('span', { class: 'xy-facility-yield' }, '产 ' + (0, l.toDisplayString)(f.每月产出)) : null,
-                                              caret(fOpen),
-                                            ],
-                                          ),
-                                          fOpen
-                                            ? h('div', { class: 'xy-facility-flat-body' }, [
-                                                !(0, l.unref)(o()).isEmpty(f?.效果) || edit
-                                                  ? h('div', { class: 'xy-facility-effect' }, [h(_t, { modelValue: f.效果, 'onUpdate:modelValue': (v) => (f.效果 = v) })])
-                                                  : null,
-                                                h('div', { class: 'xy-facility-date' }, [
-                                                  h('span', null, '上次收取：'),
-                                                  f?.上次收取日期
-                                                    ? '修仙历' + (0, l.toDisplayString)(f.上次收取日期.年) + '年' + (0, l.toDisplayString)(f.上次收取日期.月) + '月' + (0, l.toDisplayString)(f.上次收取日期.日) + '日 · ' + (0, l.toDisplayString)(f.上次收取日期.时辰)
-                                                    : h('span', null, '从未收取'),
-                                                ]),
-                                              ])
-                                            : null,
-                                        ]);
-                                      }),
-                                  edit
-                                    ? h('button', { type: 'button', class: 'xy-effect-add', onClick: () => { (a.设施 || (a.设施 = {}))[s(a.设施, '新设施')] = { 效果: {}, 每月产出: '无', 上次收取日期: null }; } }, ' ＋ 新增设施 ')
-                                    : null,
-                                  h('div', { class: 'xy-asset-section-title' }, '所属人物'),
-                                  h('div', { class: 'xy-asset-people' }, [
-                                    h(zt, { modelValue: a?.所属人物 || [], 'onUpdate:modelValue': (v) => (a.所属人物 = v), label: '所属人物' }),
-                                    edit || (a?.所属人物 || []).length ? null : h('span', { class: 'xy-asset-empty' }, '暂无'),
-                                  ]),
-                                ])
-                              : null,
-                          ]);
-                        }),
-                      ),
-                      [[l.vShow, gOpen]],
-                    ),
-                  ]);
-                }),
-              ),
+            : h('div', { class: 'xy-asset-page' }, [
+                chips,
+                h('div', { class: 'xy-asset-scroll xy-scroll-area' }, [
+                  h('div', { class: 'xy-asset-block-grid' }, visible.flatMap(({ items }) => items.map(([nm, a]) => assetBlock(nm, a)))),
+                ]),
+              ]),
         ]);
       };
     },
@@ -3735,13 +3782,45 @@ const vt = (e) => {
         s = (0, l.computed)(() => Math.max(0, Math.min(100, (r.value.现值 / Math.max(r.value.上限, 1)) * 100)));
       const unitOpen = (0, l.ref)(!e.compact);
 
-      return (n, o) => {
+      return (n, c2) => {
         const h = l.h;
         const u = e.unit || {};
         const isOpen = unitOpen.value || (0, l.unref)(Fe).editMode;
         const hp = a.value,
           mp = r.value;
         const caret = (op) => h('span', { class: 'xy-collapse-caret' }, op ? '▾' : '▸');
+        const skillEffects = (sn, sk) => {
+          const effOpen = !!(0, l.unref)(Fe).unitOpen[e.name + '::' + sn + '::效果'];
+          return h('div', { class: 'xy-effect-fold' }, [
+            h(
+              'button',
+              {
+                type: 'button',
+                class: ['xy-collapse-head xy-collapse-sub', { open: effOpen }],
+                onClick: (0, l.withModifiers)(() => (0, l.unref)(xyToggle)('unitOpen', e.name + '::' + sn + '::效果'), ['stop']),
+              },
+              [h('span', { class: 'xy-collapse-title' }, '效果'), h('span', { class: 'xy-collapse-count' }, (0, l.toDisplayString)(Object.keys(sk.效果 || {}).length)), caret(effOpen)],
+            ),
+            (0, l.withDirectives)(
+              h(
+                'div',
+                { class: 'xy-effect-rows' },
+                Object.entries(sk.效果 || {}).map(([en, ed]) => {
+                  const rowOpen = !!(0, l.unref)(Fe).unitOpen[e.name + '::' + sn + '::效果::' + en];
+                  return h('div', { key: en, class: ['xy-effect-row', { open: rowOpen }] }, [
+                    h(
+                      'button',
+                      { type: 'button', class: 'xy-effect-row-head', onClick: (0, l.withModifiers)(() => (0, l.unref)(xyToggle)('unitOpen', e.name + '::' + sn + '::效果::' + en), ['stop']) },
+                      [h('span', { class: 'xy-effect-row-name' }, (0, l.toDisplayString)(en)), caret(rowOpen)],
+                    ),
+                    rowOpen ? h('div', { class: 'xy-effect-row-desc' }, (0, l.toDisplayString)(ed)) : null,
+                  ]);
+                }),
+              ),
+              [[l.vShow, effOpen]],
+            ),
+          ]);
+        };
         return h(
           'article',
           {
@@ -3759,8 +3838,8 @@ const vt = (e) => {
                 },
                 [
                   h('span', { class: 'xy-item-name' }, (0, l.toDisplayString)(e.name)),
-                  u.品质 ? h('span', { class: ['xy-quality', 'xy-q-' + u.品质] }, (0, l.toDisplayString)(u.品质) + '品') : null,
-                  u.境界 ? h('span', { class: 'xy-pill xy-pill-soft' }, (0, l.toDisplayString)(u.境界)) : null,
+                  u.品质 ? h('span', { class: ['xy-quality', 'xy-q-' + u.品质], title: u.品质 + '品' }, (0, l.toDisplayString)(u.品质) + '品') : null,
+                  u.境界 ? h('span', { class: 'xy-pill xy-pill-soft', title: u.境界 }, (0, l.toDisplayString)(String(u.境界).replace(/期$/, ''))) : null,
                   u.五行 ? h('span', { class: 'xy-element xy-element-mini', style: { '--el': (0, l.unref)(sn)(u.五行) } }, (0, l.toDisplayString)('混沌' === u.五行 ? '混' : u.五行)) : null,
                   caret(isOpen),
                 ],
@@ -3808,7 +3887,9 @@ const vt = (e) => {
                   h('div', { class: 'xy-unit-stats' }, [
                     h('span', { class: 'xy-eq-stat xy-stat-def' }, [' 防 ', h(xt, { modelValue: u.防御力, 'onUpdate:modelValue': (v) => (u.防御力 = v), modelModifiers: { number: !0 }, type: 'number', label: '防御力', min: 0 })]),
                   ]),
-                  u.标签 && u.标签.length ? h('div', { class: 'xy-tags' }, u.标签.map((tg) => h('span', { key: tg, class: 'xy-tag' }, (0, l.toDisplayString)(tg)))) : null,
+                  u.标签 && u.标签.length
+                    ? h('div', { class: 'xy-tags xy-tags-col' }, u.标签.map((tg) => h('div', { key: tg, class: 'xy-tag-row' }, (0, l.toDisplayString)(tg))))
+                    : null,
                   u.描述 ? h('div', { class: 'xy-item-desc' }, (0, l.toDisplayString)(u.描述)) : null,
                   !(0, l.unref)(o()).isEmpty(u.技能)
                     ? h(
@@ -3831,7 +3912,7 @@ const vt = (e) => {
                                 caret(skOpen),
                               ],
                             ),
-                            skOpen && !(0, l.unref)(o()).isEmpty(sk.效果) ? h('div', { class: 'xy-skill-line-effects' }, [h(_t, { modelValue: sk.效果, 'onUpdate:modelValue': (v) => (sk.效果 = v) })]) : null,
+                            skOpen && !(0, l.unref)(o()).isEmpty(sk.效果) ? skillEffects(sn, sk) : null,
                           ]);
                         }),
                       )
@@ -3876,13 +3957,14 @@ const Ll = (0, Ml.A)(Dl, [['__scopeId', 'data-v-510b2d48']]),
       const n = ie();
 
       return (t, a) => {
-        const hh = l.h;
-        const h = hh;
+        const h = l.h;
         const arts = (0, l.unref)(mt);
         const allArts = (0, l.unref)(n).data.功法 || {};
         const edit = (0, l.unref)(Fe).editMode;
         const caret = (op) => h('span', { class: 'xy-collapse-caret' }, op ? '▾' : '▸');
-        const chipKeys = ['all'].concat(Qe.filter((k) => 'all' === (0, l.unref)(Fe).artFilter || k === (0, l.unref)(Fe).artFilter || (0, l.unref)(fn)(allArts, '类型', k) > 0));
+        const chipKeys = ['all'].concat(
+          Qe.filter((k) => k !== '其他' && ('all' === (0, l.unref)(Fe).artFilter || k === (0, l.unref)(Fe).artFilter || (0, l.unref)(fn)(allArts, '类型', k) > 0)),
+        );
         const chips = h(
           'div',
           { class: 'xy-rumor-filter' },
@@ -3899,9 +3981,43 @@ const Ll = (0, Ml.A)(Dl, [['__scopeId', 'data-v-510b2d48']]),
             ),
           ),
         );
+        const effectFold = (name, art) => {
+          const effOpen = !!(0, l.unref)(Fe).artOpen[name + '::效果'];
+          return h('div', { class: 'xy-effect-fold' }, [
+            h(
+              'button',
+              {
+                type: 'button',
+                class: ['xy-collapse-head xy-collapse-sub', { open: effOpen }],
+                onClick: (0, l.withModifiers)(() => (0, l.unref)(xyToggle)('artOpen', String(name) + '::效果'), ['stop']),
+              },
+              [h('span', { class: 'xy-collapse-title' }, '效果'), h('span', { class: 'xy-collapse-count' }, (0, l.toDisplayString)(Object.keys(art.效果 || {}).length)), caret(effOpen)],
+            ),
+            (0, l.withDirectives)(
+              h(
+                'div',
+                { class: 'xy-effect-rows' },
+                edit
+                  ? [h(_t, { modelValue: art.效果, 'onUpdate:modelValue': (v) => (art.效果 = v) })]
+                  : Object.entries(art.效果 || {}).map(([en, ed]) => {
+                      const rowOpen = !!(0, l.unref)(Fe).artOpen[name + '::效果::' + en];
+                      return h('div', { key: en, class: ['xy-effect-row', { open: rowOpen }] }, [
+                        h(
+                          'button',
+                          { type: 'button', class: 'xy-effect-row-head', onClick: (0, l.withModifiers)(() => (0, l.unref)(xyToggle)('artOpen', String(name) + '::效果::' + en), ['stop']) },
+                          [h('span', { class: 'xy-effect-row-name' }, (0, l.toDisplayString)(en)), caret(rowOpen)],
+                        ),
+                        rowOpen ? h('div', { class: 'xy-effect-row-desc' }, (0, l.toDisplayString)(ed)) : null,
+                      ]);
+                    }),
+              ),
+              [[l.vShow, effOpen]],
+            ),
+          ]);
+        };
         return h(
           e.embedded ? 'div' : 'section',
-          { class: ['xy-page-arts', { 'xy-page': !e.embedded }] },
+          { class: ['xy-page-arts xy-scroll-area', { 'xy-page': !e.embedded }] },
           [
             chips,
             (0, l.unref)(o()).isEmpty(allArts)
@@ -3915,7 +4031,6 @@ const Ll = (0, Ml.A)(Dl, [['__scopeId', 'data-v-510b2d48']]),
                       const open = !!(0, l.unref)(Fe).artOpen[name];
                       const showBody = open || edit;
                       const active = !!art.使用中;
-                      const effOpen = !!(0, l.unref)(Fe).artOpen[name + '::效果'];
                       return h(
                         'article',
                         { key: name, class: ['xy-art xy-art-flat', { 'xy-art-active': active, open: showBody }] },
@@ -3931,9 +4046,9 @@ const Ll = (0, Ml.A)(Dl, [['__scopeId', 'data-v-510b2d48']]),
                               },
                               [
                                 h('span', { class: 'xy-art-flat-name' }, (0, l.toDisplayString)(name)),
-                                art.类型 ? h('span', { class: 'xy-pill xy-pill-type' }, (0, l.toDisplayString)(art.类型)) : null,
-                                art.品质 ? h('span', { class: ['xy-quality', 'xy-q-' + art.品质] }, (0, l.toDisplayString)(art.品质) + '品') : null,
-                                art.境界 ? h('span', { class: 'xy-pill xy-pill-soft' }, (0, l.toDisplayString)(art.境界)) : null,
+                                art.类型 ? h('span', { class: 'xy-pill', title: art.类型 }, (0, l.toDisplayString)(art.类型)) : null,
+                                art.品质 ? h('span', { class: ['xy-quality', 'xy-q-' + art.品质], title: art.品质 + '品' }, (0, l.toDisplayString)(art.品质) + '品') : null,
+                                art.境界 ? h('span', { class: 'xy-pill xy-pill-soft', title: art.境界 }, (0, l.toDisplayString)(String(art.境界).replace(/期$/, ''))) : null,
                                 caret(showBody),
                               ],
                             ),
@@ -3960,24 +4075,6 @@ const Ll = (0, Ml.A)(Dl, [['__scopeId', 'data-v-510b2d48']]),
                           ]),
                           showBody
                             ? h('div', { class: 'xy-art-flat-body' }, [
-                                !(0, l.unref)(o()).isEmpty(art.效果) || edit
-                                  ? h('div', { class: 'xy-effect-fold' }, [
-                                      h(
-                                        'button',
-                                        {
-                                          type: 'button',
-                                          class: ['xy-collapse-head xy-collapse-sub', { open: effOpen }],
-                                          onClick: (0, l.withModifiers)(() => (0, l.unref)(xyToggle)('artOpen', String(name) + '::效果'), ['stop']),
-                                        },
-                                        [
-                                          h('span', { class: 'xy-collapse-title' }, '效果'),
-                                          h('span', null, (0, l.toDisplayString)(Object.keys(art.效果 || {}).length)),
-                                          caret(effOpen),
-                                        ],
-                                      ),
-                                      (0, l.withDirectives)(h('div', { class: 'xy-effect-list' }, [h(_t, { modelValue: art.效果, 'onUpdate:modelValue': (v) => (art.效果 = v) })]), [[l.vShow, effOpen]]),
-                                    ])
-                                  : null,
                                 art.消耗 || edit
                                   ? h('div', { class: 'xy-art-flat-meta' }, [
                                       art.五行 ? h('span', { class: 'xy-element xy-element-mini', style: { '--el': (0, l.unref)(sn)(art.五行) } }, (0, l.toDisplayString)('混沌' === art.五行 ? '混' : art.五行)) : null,
@@ -3987,8 +4084,9 @@ const Ll = (0, Ml.A)(Dl, [['__scopeId', 'data-v-510b2d48']]),
                                 art.描述 || edit
                                   ? h('div', { class: 'xy-art-desc' }, [h(xt, { modelValue: art.描述, 'onUpdate:modelValue': (v) => (art.描述 = v), label: '描述', multiline: '' })])
                                   : null,
+                                !(0, l.unref)(o()).isEmpty(art.效果) || edit ? effectFold(name, art) : null,
                                 art.标签 && art.标签.length
-                                  ? h('div', { class: 'xy-tags' }, art.标签.map((tg) => h('span', { key: tg, class: 'xy-tag' }, (0, l.toDisplayString)(tg))))
+                                  ? h('div', { class: 'xy-tags xy-tags-col' }, art.标签.map((tg) => h('div', { key: tg, class: 'xy-tag-row' }, (0, l.toDisplayString)(tg))))
                                   : null,
                               ])
                             : null,
@@ -4062,7 +4160,6 @@ const Ll = (0, Ml.A)(Dl, [['__scopeId', 'data-v-510b2d48']]),
         const caret = (op) => h('span', { class: 'xy-collapse-caret' }, op ? '▾' : '▸');
         const countType = (obj, key) => (0, l.unref)(fn)(obj, '类型', key);
         const countQuality = (obj, key) => (0, l.unref)(fn)(obj, '品质', key);
-        const countTag = (obj, key) => Object.values(obj).filter((it) => (0, l.unref)(_n)(it?.标签, key) !== null).length;
         const allItems = data.物品 || {};
         const allEquips = data.装备 || {};
         const allPuppets = data.傀儡 || {};
@@ -4072,7 +4169,6 @@ const Ll = (0, Ml.A)(Dl, [['__scopeId', 'data-v-510b2d48']]),
         );
         const equipChips = [{ key: 'all', label: '全部', count: Object.keys(allEquips).length }].concat(
           Ze.filter((k) => countType(allEquips, k) > 0).map((k) => ({ key: k, label: k, count: countType(allEquips, k) })),
-          (0, l.unref)(EquipTagKeys).map((k) => ({ key: k, label: k, count: countTag(allEquips, k) })),
         );
         const puppetChips = [{ key: 'all', label: '全部', count: Object.keys(allPuppets).length }].concat(
           He.filter((k) => countQuality(allPuppets, k) > 0).map((k) => ({ key: k, label: k + '品', count: countQuality(allPuppets, k) })),
@@ -4080,6 +4176,13 @@ const Ll = (0, Ml.A)(Dl, [['__scopeId', 'data-v-510b2d48']]),
         const beastChips = [{ key: 'all', label: '全部', count: Object.keys(allBeasts).length }].concat(
           He.filter((k) => countQuality(allBeasts, k) > 0).map((k) => ({ key: k, label: k + '品', count: countQuality(allBeasts, k) })),
         );
+        // 装备：当前类型筛选下的位置二级分类
+        const equipPosKeys = (() => {
+          const src = 'all' === (0, l.unref)(Fe).equipFilter || Ze.includes((0, l.unref)(Fe).equipFilter) ? allEquips : (0, l.unref)(ut);
+          const set = new Set();
+          for (const eq of Object.values(src)) if (eq?.位置) set.add(String(eq.位置));
+          return [...set];
+        })();
         const chipRow = (chips, active, setActive) =>
           h(
             'div',
@@ -4092,10 +4195,43 @@ const Ll = (0, Ml.A)(Dl, [['__scopeId', 'data-v-510b2d48']]),
               ),
             ),
           );
+        const effectFold = (map, name, effects, onUpdate) => {
+          const effOpen = !!(0, l.unref)(Fe)[map][name + '::效果'];
+          return h('div', { class: 'xy-effect-fold' }, [
+            h(
+              'button',
+              {
+                type: 'button',
+                class: ['xy-collapse-head xy-collapse-sub', { open: effOpen }],
+                onClick: (0, l.withModifiers)(() => (0, l.unref)(xyToggle)(map, String(name) + '::效果'), ['stop']),
+              },
+              [h('span', { class: 'xy-collapse-title' }, '效果'), h('span', { class: 'xy-collapse-count' }, (0, l.toDisplayString)(Object.keys(effects || {}).length)), caret(effOpen)],
+            ),
+            (0, l.withDirectives)(
+              h(
+                'div',
+                { class: 'xy-effect-rows' },
+                edit
+                  ? [h(_t, { modelValue: effects, 'onUpdate:modelValue': onUpdate })]
+                  : Object.entries(effects || {}).map(([en, ed]) => {
+                      const rowOpen = !!(0, l.unref)(Fe)[map][name + '::效果::' + en];
+                      return h('div', { key: en, class: ['xy-effect-row', { open: rowOpen }] }, [
+                        h(
+                          'button',
+                          { type: 'button', class: 'xy-effect-row-head', onClick: (0, l.withModifiers)(() => (0, l.unref)(xyToggle)(map, String(name) + '::效果::' + en), ['stop']) },
+                          [h('span', { class: 'xy-effect-row-name' }, (0, l.toDisplayString)(en)), caret(rowOpen)],
+                        ),
+                        rowOpen ? h('div', { class: 'xy-effect-row-desc' }, (0, l.toDisplayString)(ed)) : null,
+                      ]);
+                    }),
+              ),
+              [[l.vShow, effOpen]],
+            ),
+          ]);
+        };
         const itemRow = (name, it) => {
           const open = !!(0, l.unref)(Fe).itemOpen[name];
           const showBody = open || edit;
-          const effOpen = !!(0, l.unref)(Fe).itemOpen[name + '::效果'];
           return h('article', { key: name, class: ['xy-item xy-item-flat', 'xy-q-bg-' + it.品质, { open: showBody }] }, [
             h('button', { type: 'button', class: 'xy-trash', title: '删除此物品', onClick: (0, l.withModifiers)(() => (0, l.unref)(at)('item', String(name), String(name)), ['stop']) }, '×'),
             h('div', { class: 'xy-item-flat-head' }, [
@@ -4110,7 +4246,7 @@ const Ll = (0, Ml.A)(Dl, [['__scopeId', 'data-v-510b2d48']]),
                 [
                   h('span', { class: 'xy-item-name' }, (0, l.toDisplayString)(name)),
                   h('span', { class: 'xy-item-qty' }, ['×', h(xt, { modelValue: it.数量, 'onUpdate:modelValue': (v) => (it.数量 = v), modelModifiers: { number: !0 }, type: 'number', label: '数量', min: 0 })]),
-                  it.品质 ? h('span', { class: ['xy-quality', 'xy-q-' + it.品质] }, (0, l.toDisplayString)(it.品质)) : null,
+                  it.品质 ? h('span', { class: ['xy-quality', 'xy-q-' + it.品质], title: it.品质 + '品' }, (0, l.toDisplayString)(it.品质) + '品') : null,
                   caret(showBody),
                 ],
               ),
@@ -4118,8 +4254,8 @@ const Ll = (0, Ml.A)(Dl, [['__scopeId', 'data-v-510b2d48']]),
             showBody
               ? h('div', { class: 'xy-item-flat-body' }, [
                   h('div', { class: 'xy-item-meta' }, [
-                    it.类型 ? h('span', { class: 'xy-pill' }, (0, l.toDisplayString)(it.类型)) : null,
-                    it.境界 ? h('span', { class: 'xy-pill xy-pill-soft' }, (0, l.toDisplayString)(it.境界)) : null,
+                    it.类型 ? h('span', { class: 'xy-pill', title: it.类型 }, (0, l.toDisplayString)(it.类型)) : null,
+                    it.境界 ? h('span', { class: 'xy-pill xy-pill-soft', title: it.境界 }, (0, l.toDisplayString)(String(it.境界).replace(/期$/, ''))) : null,
                     it.五行 ? h('span', { class: 'xy-element xy-element-mini', style: { '--el': (0, l.unref)(sn)(it.五行) } }, (0, l.toDisplayString)('混沌' === it.五行 ? '混' : it.五行)) : null,
                   ]),
                   (0, l.unref)(Bn)(it.标签).length
@@ -4129,18 +4265,7 @@ const Ll = (0, Ml.A)(Dl, [['__scopeId', 'data-v-510b2d48']]),
                     ? h('div', { class: 'xy-item-desc' }, [h(xt, { modelValue: it.描述, 'onUpdate:modelValue': (v) => (it.描述 = v), label: '描述', multiline: '' })])
                     : null,
                   !(0, l.unref)(o()).isEmpty(it.效果) || edit
-                    ? h('div', { class: 'xy-effect-fold' }, [
-                        h(
-                          'button',
-                          {
-                            type: 'button',
-                            class: ['xy-collapse-head xy-collapse-sub', { open: effOpen }],
-                            onClick: (0, l.withModifiers)(() => (0, l.unref)(xyToggle)('itemOpen', String(name) + '::效果'), ['stop']),
-                          },
-                          [h('span', { class: 'xy-collapse-title' }, '效果'), h('span', null, (0, l.toDisplayString)(Object.keys(it.效果 || {}).length)), caret(effOpen)],
-                        ),
-                        (0, l.withDirectives)(h('div', { class: 'xy-effect-list' }, [h(_t, { modelValue: it.效果, 'onUpdate:modelValue': (v) => (it.效果 = v) })]), [[l.vShow, effOpen]]),
-                      ])
+                    ? effectFold('itemOpen', name, it.效果, (v) => (it.效果 = v))
                     : null,
                 ])
               : null,
@@ -4149,7 +4274,6 @@ const Ll = (0, Ml.A)(Dl, [['__scopeId', 'data-v-510b2d48']]),
         const equipRow = (name, eq) => {
           const open = !!(0, l.unref)(Fe).equipOpen[name];
           const showBody = open || edit;
-          const effOpen = !!(0, l.unref)(Fe).equipOpen[name + '::效果'];
           return h('article', { key: name, class: ['xy-item xy-item-flat xy-equipment', 'xy-q-bg-' + eq.品质, { open: showBody }] }, [
             h('button', { type: 'button', class: 'xy-trash', title: '删除此装备', onClick: (0, l.withModifiers)(() => (0, l.unref)(at)('equip', String(name), String(name)), ['stop']) }, '×'),
             h('div', { class: 'xy-item-flat-head' }, [
@@ -4164,7 +4288,7 @@ const Ll = (0, Ml.A)(Dl, [['__scopeId', 'data-v-510b2d48']]),
                 [
                   h('span', { class: 'xy-item-name' }, (0, l.toDisplayString)(name)),
                   eq.位置 ? h('span', { class: 'xy-item-pos' }, (0, l.toDisplayString)(eq.位置)) : null,
-                  eq.品质 ? h('span', { class: ['xy-quality', 'xy-q-' + eq.品质] }, (0, l.toDisplayString)(eq.品质)) : null,
+                  eq.品质 ? h('span', { class: ['xy-quality', 'xy-q-' + eq.品质], title: eq.品质 + '品' }, (0, l.toDisplayString)(eq.品质) + '品') : null,
                   caret(showBody),
                 ],
               ),
@@ -4172,8 +4296,8 @@ const Ll = (0, Ml.A)(Dl, [['__scopeId', 'data-v-510b2d48']]),
             showBody
               ? h('div', { class: 'xy-item-flat-body' }, [
                   h('div', { class: 'xy-item-meta' }, [
-                    eq.类型 ? h('span', { class: 'xy-pill' }, (0, l.toDisplayString)(eq.类型)) : null,
-                    eq.境界 ? h('span', { class: 'xy-pill xy-pill-soft' }, (0, l.toDisplayString)(eq.境界)) : null,
+                    eq.类型 ? h('span', { class: 'xy-pill', title: eq.类型 }, (0, l.toDisplayString)(eq.类型)) : null,
+                    eq.境界 ? h('span', { class: 'xy-pill xy-pill-soft', title: eq.境界 }, (0, l.toDisplayString)(String(eq.境界).replace(/期$/, ''))) : null,
                     eq.五行 ? h('span', { class: 'xy-element xy-element-mini', style: { '--el': (0, l.unref)(sn)(eq.五行) } }, (0, l.toDisplayString)('混沌' === eq.五行 ? '混' : eq.五行)) : null,
                   ]),
                   h('div', { class: 'xy-eq-stats' }, [
@@ -4191,18 +4315,7 @@ const Ll = (0, Ml.A)(Dl, [['__scopeId', 'data-v-510b2d48']]),
                     ? h('div', { class: 'xy-item-desc' }, [h(xt, { modelValue: eq.描述, 'onUpdate:modelValue': (v) => (eq.描述 = v), label: '描述', multiline: '' })])
                     : null,
                   !(0, l.unref)(o()).isEmpty(eq.效果) || edit
-                    ? h('div', { class: 'xy-effect-fold' }, [
-                        h(
-                          'button',
-                          {
-                            type: 'button',
-                            class: ['xy-collapse-head xy-collapse-sub', { open: effOpen }],
-                            onClick: (0, l.withModifiers)(() => (0, l.unref)(xyToggle)('equipOpen', String(name) + '::效果'), ['stop']),
-                          },
-                          [h('span', { class: 'xy-collapse-title' }, '效果'), h('span', null, (0, l.toDisplayString)(Object.keys(eq.效果 || {}).length)), caret(effOpen)],
-                        ),
-                        (0, l.withDirectives)(h('div', { class: 'xy-effect-list' }, [h(_t, { modelValue: eq.效果, 'onUpdate:modelValue': (v) => (eq.效果 = v) })]), [[l.vShow, effOpen]]),
-                      ])
+                    ? effectFold('equipOpen', name, eq.效果, (v) => (eq.效果 = v))
                     : null,
                 ])
               : null,
@@ -4225,6 +4338,19 @@ const Ll = (0, Ml.A)(Dl, [['__scopeId', 'data-v-510b2d48']]),
         ]);
         const empty = (mark, text) => h('div', { class: 'xy-empty' }, [h('div', { class: 'xy-empty-mark' }, mark), h('p', null, text)]);
         const emptySoft = (text) => h('div', { class: 'xy-empty xy-empty-soft' }, [h('div', { class: 'xy-empty-mark' }, '·'), h('p', null, text)]);
+        const equipPosChips = equipPosKeys.length
+          ? h(
+              'div',
+              { class: 'xy-rumor-filter xy-filter-sub' },
+              [{ key: 'all', label: '全部位置', count: 0 }, ...equipPosKeys.map((k) => ({ key: k, label: k, count: 0 }))].map((c) =>
+                h(
+                  'button',
+                  { key: c.key, type: 'button', class: ['xy-chip xy-chip-sub', { active: (0, l.unref)(Fe).equipPosFilter === c.key }], onClick: () => ((0, l.unref)(Fe).equipPosFilter = c.key) },
+                  ' ' + (0, l.toDisplayString)(c.label) + ' ',
+                ),
+              ),
+            )
+          : null;
         return h('section', { class: 'xy-page xy-page-storage' }, [
           stoneBar,
           tabButtons,
@@ -4233,7 +4359,7 @@ const Ll = (0, Ml.A)(Dl, [['__scopeId', 'data-v-510b2d48']]),
             : 1 === (0, l.unref)(Fe).storageTab
               ? h(
                   'div',
-                  { key: 1 },
+                  { key: 1, class: 'xy-scroll-area' },
                   (0, l.unref)(o()).isEmpty(allItems)
                     ? [empty('无', '储物空间空空如也')]
                     : [
@@ -4244,18 +4370,19 @@ const Ll = (0, Ml.A)(Dl, [['__scopeId', 'data-v-510b2d48']]),
               : 2 === (0, l.unref)(Fe).storageTab
                 ? h(
                     'div',
-                    { key: 2 },
+                    { key: 2, class: 'xy-scroll-area' },
                     (0, l.unref)(o()).isEmpty(allEquips)
                       ? [empty('无', '未持任何装备')]
                       : [
                           chipRow(equipChips, (0, l.unref)(Fe).equipFilter, (k) => ((0, l.unref)(Fe).equipFilter = k)),
-                          (0, l.unref)(o()).isEmpty((0, l.unref)(ut)) ? emptySoft('该分类下暂无装备') : h('div', { class: 'xy-item-grid' }, Object.entries((0, l.unref)(ut)).map(([nm, eq]) => equipRow(nm, eq))),
+                          equipPosChips,
+                          (0, l.unref)(o()).isEmpty((0, l.unref)(ut2)) ? emptySoft('该分类下暂无装备') : h('div', { class: 'xy-item-grid' }, Object.entries((0, l.unref)(ut2)).map(([nm, eq]) => equipRow(nm, eq))),
                         ],
                   )
                 : 3 === (0, l.unref)(Fe).storageTab
                   ? h(
                       'div',
-                      { key: 3 },
+                      { key: 3, class: 'xy-scroll-area' },
                       (0, l.unref)(o()).isEmpty(allPuppets)
                         ? [empty('无', '暂无傀儡')]
                         : [
@@ -4265,7 +4392,7 @@ const Ll = (0, Ml.A)(Dl, [['__scopeId', 'data-v-510b2d48']]),
                     )
                   : h(
                       'div',
-                      { key: 4 },
+                      { key: 4, class: 'xy-scroll-area' },
                       (0, l.unref)(o()).isEmpty(allBeasts)
                         ? [empty('无', '暂无灵兽')]
                         : [
@@ -4436,48 +4563,294 @@ const Ll = (0, Ml.A)(Dl, [['__scopeId', 'data-v-510b2d48']]),
         const h = l.h;
         const caret = (op) => h('span', { class: 'xy-collapse-caret' }, op ? '▾' : '▸');
         const allRel = (0, l.unref)(n).data.关系列表 || {};
-        const wild = a.value;
-        const npcGroups = (() => {
-          const map = { 道侣: {}, 在场: {}, 不在场: {} };
-          for (const it of t.value) {
-            const npc = it.npc || {};
-            const g = (0, l.unref)(kn)(npc) ? '道侣' : npc.在场 ? '在场' : '不在场';
-            const lv = (0, l.unref)(favorLevelOf)(npc.好感度 ?? 0);
-            (map[g][lv] = map[g][lv] || []).push(it);
-          }
-          return ['道侣', '在场', '不在场']
-            .map((key) => ({
-              key,
-              levels: FavorLevels.map((lv) => ({
-                lv,
-                items: (map[key][lv] || []).slice().sort((x, y) => (y.npc?.好感度 ?? 0) - (x.npc?.好感度 ?? 0)),
-              })).filter((x) => x.items.length),
-            }))
-            .filter((g) => g.levels.length);
-        })();
-        const npcSection = (g) => {
-          const gOpen = !!(0, l.unref)(Fe).relationOpen[g.key];
-          return h('section', { key: g.key, class: 'xy-rel-group' }, [
-            h('button', { type: 'button', class: ['xy-collapse-head xy-rel-group-head', { open: gOpen }], onClick: (0, l.withModifiers)(() => (0, l.unref)(xyToggle)('relationOpen', g.key), ['stop']) }, [
-              h('span', { class: 'xy-collapse-title' }, (0, l.toDisplayString)(g.key)),
-              h('span', { class: 'xy-rel-group-count' }, (0, l.toDisplayString)(g.levels.reduce((s, x) => s + x.items.length, 0))),
-              caret(gOpen),
+        const filter = (0, l.unref)(Fe).relationFilter;
+        const xyNpcBox = (nm) => { (0, l.unref)(Fe).npcStage[nm] = 2; (0, l.unref)(Fe).openedNPC = nm; };
+        const xyNpcHead = (nm) => {
+          const cur = (0, l.unref)(Fe).npcStage[nm] || 0;
+          if (cur >= 2) { (0, l.unref)(Fe).npcStage[nm] = 0; (0, l.unref)(Fe).openedNPC = null; }
+          else { (0, l.unref)(Fe).npcStage[nm] = 2; (0, l.unref)(Fe).openedNPC = nm; }
+        };
+        const levelMap = {};
+        for (const it of yt.value) {
+          const npc = it.npc || {};
+          const lv = (0, l.unref)(favorLevelOf)(npc.好感度 ?? 0);
+          (levelMap[lv] = levelMap[lv] || []).push(it);
+        }
+        const levels = FavorLevels.map((lv) => ({ lv, items: (levelMap[lv] || []).slice().sort((x, y) => (y.npc?.好感度 ?? 0) - (x.npc?.好感度 ?? 0)) })).filter((x) => x.items.length);
+        const total = levels.reduce((s, x) => s + x.items.length, 0);
+        const daoItems = yt.value.filter((it) => it.npc?.道侣);
+        const presentItems = yt.value.filter((it) => it.npc?.在场);
+        const chipKeys = ['all', '道侣', '在场'].concat(FavorLevels.filter((lv) => levelMap[lv] && levelMap[lv].length));
+        const chips = h(
+          'div',
+          { class: 'xy-rel-chips' },
+          chipKeys.map((k) =>
+            h(
+              'button',
+              { key: k, type: 'button', class: ['xy-chip', { active: filter === k }], onClick: () => ((0, l.unref)(Fe).relationFilter = k) },
+              [' ' + (0, l.toDisplayString)('all' === k ? '全部' : k) + ' ', h('em', null, (0, l.toDisplayString)('all' === k ? total : '道侣' === k ? daoItems.length : '在场' === k ? presentItems.length : levelMap[k].length))],
+            ),
+          ),
+        );
+        const filterMatch = (it) => {
+          if ('all' === filter) return !0;
+          if ('道侣' === filter) return !!it.npc?.道侣;
+          if ('在场' === filter) return !!it.npc?.在场;
+          return (0, l.unref)(favorLevelOf)(it.npc?.好感度 ?? 0) === filter;
+        };
+        const visibleLevels = levels.map(({ lv, items }) => ({ lv, items: items.filter(filterMatch) })).filter((x) => x.items.length);
+        const levelSection = ({ lv, items }) =>
+          h('section', { key: lv, class: 'xy-rel-level' }, [
+            h('div', { class: 'xy-rel-level-head' }, [
+              h('span', { class: 'xy-rel-level-label' }, (0, l.toDisplayString)(lv)),
+              h('span', { class: 'xy-rel-level-count' }, (0, l.toDisplayString)(items.length)),
             ]),
-            (0, l.withDirectives)(
-              h('div', { class: 'xy-rel-group-body' }, [
-                h(l.Fragment, null, g.levels.map(({ lv, items }) =>
-                  h('div', { key: lv, class: 'xy-rel-level' }, [
-                    h('div', { class: 'xy-rel-level-head' }, [
-                      h('span', { class: 'xy-rel-level-label' }, (0, l.toDisplayString)(lv)),
-                      h('span', { class: 'xy-rel-level-count' }, (0, l.toDisplayString)(items.length)),
+            h('div', { class: 'xy-npc-stage-grid' }, items.map(({ name: e, npc: n }) => {
+              const stage = (0, l.unref)(Fe).npcStage[e] || 0;
+              const isWild = '傀儡' === n?.类型 || '灵兽' === n?.类型;
+              if (stage === 0) {
+                return h('div', { key: 'b' + e, class: 'xy-npc-box', title: (0, l.toDisplayString)(e), onClick: (0, l.withModifiers)(() => (0, l.unref)(xyNpcBox)(e), ['stop']) }, [
+                  h('div', { class: ['xy-npc-avatar', { active: n.在场, 'has-img': (0, l.unref)(Kn)(e) }], onClick: (ev) => (0, l.unref)(Jn)(e, ev) }, [
+                    (0, l.unref)(Kn)(e)
+                      ? h('img', { src: (0, l.unref)(Kn)(e), alt: String(e), class: 'xy-npc-avatar-img' })
+                      : h('span', { class: 'xy-npc-avatar-char' }, (0, l.toDisplayString)((0, l.unref)(mn)(e))),
+                    h('button', { type: 'button', class: 'xy-npc-avatar-cam', title: (0, l.unref)(Kn)(e) ? '更换头像（右键清除）' : '上传头像', onClick: (0, l.withModifiers)((ev) => (0, l.unref)(et)(e), ['stop']), onContextmenu: (0, l.withModifiers)((ev) => (0, l.unref)(Kn)(e) && (0, l.unref)(lt)(e), ['prevent', 'stop']) }, [
+                      h('svg', { viewBox: '0 0 24 24', width: '11', height: '11', fill: 'currentColor', 'aria-hidden': 'true' }, [
+                        h('path', { d: 'M9.5 4l-1.7 2H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-3.8L14.5 4h-5zm2.5 4a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6z' }),
+                      ]),
                     ]),
-                    h(l.Fragment, null, items.map(({ name: e, npc: n }) => (                      (0, l.openBlock)(),
+                  ]),
+                  h('span', { class: 'xy-npc-box-name' }, (0, l.toDisplayString)(e)),
+                  isWild ? h('span', { class: 'xy-npc-box-type' }, (0, l.toDisplayString)(n?.类型)) : null,
+                ]);
+              }
+              return isWild ? (                      (0, l.openBlock)(),
+                      (0, l.createElementBlock)(
+                        'article',
+                        {
+                          key: 'wu-' + e,
+                          class: (0, l.normalizeClass)([
+                            'xy-npc xy-wild-unit',
+                            { 'xy-npc-open': (0, l.unref)(Fe).openedNPC === e && (0, l.unref)(Fe).npcStage[e] === 2 },
+                          ]),
+                          onClick: (n) => (0, l.unref)(xyNpcHead)(e),
+                        },
+                        [
+                          (0, l.createElementVNode)('div', Ja, [
+                            (0, l.createElementVNode)(
+                              'span',
+                              { class: 'xy-wild-icon', title: n.类型 },
+                              (0, l.toDisplayString)('灵兽' === n.类型 ? '兽' : '傀'),
+                              9,
+                              eo,
+                            ),
+                            (0, l.createElementVNode)('div', no, [
+                              (0, l.createElementVNode)('div', to, [
+                                (0, l.createElementVNode)('span', lo, (0, l.toDisplayString)(e), 1),
+                                n.境界
+                                  ? ((0, l.openBlock)(),
+                                    (0, l.createElementBlock)('span', ao, (0, l.toDisplayString)(n.境界), 1))
+                                  : (0, l.createCommentVNode)('v-if', !0),
+                                n.在场
+                                  ? ((0, l.openBlock)(), (0, l.createElementBlock)('span', oo, '在场'))
+                                  : (0, l.createCommentVNode)('v-if', !0),
+                              ]),
+                              (0, l.createElementVNode)('div', ro, [
+                                (0, l.createElementVNode)('span', co, (0, l.toDisplayString)(n.类型), 1),
+                                n.品质
+                                  ? ((0, l.openBlock)(),
+                                    (0, l.createElementBlock)(
+                                      'span',
+                                      { key: 0, class: (0, l.normalizeClass)(['xy-wild-q-tag', 'xy-q-' + n.品质]) },
+                                      (0, l.toDisplayString)(n.品质) + '品',
+                                      3,
+                                    ))
+                                  : (0, l.createCommentVNode)('v-if', !0),
+                                n.五行
+                                  ? ((0, l.openBlock)(),
+                                    (0, l.createElementBlock)(
+                                      'span',
+                                      {
+                                        key: 1,
+                                        class: 'xy-element xy-element-mini',
+                                        style: (0, l.normalizeStyle)({ '--el': (0, l.unref)(sn)(n.五行) }),
+                                      },
+                                      (0, l.toDisplayString)('混沌' === n.五行 ? '混' : n.五行),
+                                      5,
+                                    ))
+                                  : (0, l.createCommentVNode)('v-if', !0),
+                              ]),
+                            ]),
+                            (0, l.createElementVNode)(
+                              'div',
+                              {
+                                class: (0, l.normalizeClass)(['xy-favor', (0, l.unref)(un)(n.好感度)]),
+                                onClick: r[0] || (r[0] = (0, l.withModifiers)(() => {}, ['stop'])),
+                              },
+                              [
+                                (0, l.createElementVNode)('div', so, [
+                                  (0, l.createVNode)(
+                                    xt,
+                                    {
+                                      modelValue: n.好感度,
+                                      'onUpdate:modelValue': (e) => (n.好感度 = e),
+                                      modelModifiers: { number: !0 },
+                                      type: 'number',
+                                      label: '好感度',
+                                      min: -100,
+                                      max: 100,
+                                    },
+                                    null,
+                                    8,
+                                    ['modelValue', 'onUpdate:modelValue'],
+                                  ),
+                                ]),
+                                (0, l.createElementVNode)(
+                                  'div',
+                                  io,
+                                  (0, l.toDisplayString)((0, l.unref)(dn)(n.好感度)),
+                                  1,
+                                ),
+                              ],
+                              2,
+                            ),
+                            (0, l.createElementVNode)(
+                              'button',
+                              {
+                                type: 'button',
+                                class: 'xy-trash xy-trash-npc',
+                                title: '删除此条目',
+                                onClick: (0, l.withModifiers)((n) => (0, l.unref)(at)('npc', e, e), ['stop']),
+                              },
+                              [
+                                ...(r[4] ||
+                                  (r[4] = [
+                                    (0, l.createElementVNode)(
+                                      'svg',
+                                      {
+                                        viewBox: '0 0 24 24',
+                                        width: '11',
+                                        height: '11',
+                                        fill: 'currentColor',
+                                        'aria-hidden': 'true',
+                                      },
+                                      [
+                                        (0, l.createElementVNode)('path', {
+                                          d: 'M9 3v1H4v2h16V4h-5V3H9zM6 8l1 13h10l1-13H6zm3 2h2v9H9v-9zm4 0h2v9h-2v-9z',
+                                        }),
+                                      ],
+                                      -1,
+                                    ),
+                                  ])),
+                              ],
+                              8,
+                              mo,
+                            ),
+                          ]),
+                          (0, l.unref)(Fe).openedNPC === e && (0, l.unref)(Fe).npcStage[e] === 2
+                            ? ((0, l.openBlock)(),
+                              (0, l.createElementBlock)(
+                                'div',
+                                {
+                                  key: 0,
+                                  class: 'xy-wild-body',
+                                  onClick: r[1] || (r[1] = (0, l.withModifiers)(() => {}, ['stop'])),
+                                },
+                                [
+                                  (0, l.createVNode)($l, { unit: n, name: String(e), compact: '' }, null, 8, [
+                                    'unit',
+                                    'name',
+                                  ]),
+                                  (0, l.unref)(o()).isEmpty(n.状态效果)
+                                    ? (0, l.createCommentVNode)('v-if', !0)
+                                    : ((0, l.openBlock)(),
+                                      (0, l.createElementBlock)('div', uo, [
+                                        r[5] || (r[5] = (0, l.createElementVNode)('h4', null, '状态效果', -1)),
+                                        (0, l.createElementVNode)('div', po, [
+                                          ((0, l.openBlock)(!0),
+                                          (0, l.createElementBlock)(
+                                            l.Fragment,
+                                            null,
+                                            (0, l.renderList)(
+                                              n.状态效果,
+                                              (e, n) => (
+                                                (0, l.openBlock)(),
+                                                (0, l.createElementBlock)(
+                                                  'div',
+                                                  {
+                                                    key: n,
+                                                    class: (0, l.normalizeClass)([
+                                                      'xy-buff-item',
+                                                      ['xy-buff-' + (e.类型 || '特殊')],
+                                                    ]),
+                                                  },
+                                                  [
+                                                    (0, l.createElementVNode)('div', fo, [
+                                                      (0, l.createElementVNode)(
+                                                        'span',
+                                                        yo,
+                                                        (0, l.toDisplayString)(n),
+                                                        1,
+                                                      ),
+                                                      (0, l.createElementVNode)(
+                                                        'span',
+                                                        ko,
+                                                        (0, l.toDisplayString)(e.类型),
+                                                        1,
+                                                      ),
+                                                      e.层数 > 1
+                                                        ? ((0, l.openBlock)(),
+                                                          (0, l.createElementBlock)(
+                                                            'span',
+                                                            Vo,
+                                                            'x' + (0, l.toDisplayString)(e.层数),
+                                                            1,
+                                                          ))
+                                                        : (0, l.createCommentVNode)('v-if', !0),
+                                                      (0, l.createElementVNode)(
+                                                        'span',
+                                                        bo,
+                                                        (0, l.toDisplayString)(e.剩余时间),
+                                                        1,
+                                                      ),
+                                                    ]),
+                                                    (0, l.unref)(o()).isEmpty(e.效果)
+                                                      ? (0, l.createCommentVNode)('v-if', !0)
+                                                      : ((0, l.openBlock)(),
+                                                        (0, l.createBlock)(
+                                                          _t,
+                                                          {
+                                                            key: 0,
+                                                            modelValue: e.效果,
+                                                            'onUpdate:modelValue': (n) => (e.效果 = n),
+                                                            'line-class': 'xy-buff-effect',
+                                                          },
+                                                          null,
+                                                          8,
+                                                          ['modelValue', 'onUpdate:modelValue'],
+                                                        )),
+                                                  ],
+                                                  2,
+                                                )
+                                              ),
+                                            ),
+                                            128,
+                                          )),
+                                        ]),
+                                      ])),
+                                ],
+                              ))
+                            : (0, l.createCommentVNode)('v-if', !0),
+                        ],
+                        10,
+                        Ka,
+                      )) : (                      (0, l.openBlock)(),
                       (0, l.createElementBlock)(
                         'article',
                         {
                           key: e,
-                          class: (0, l.normalizeClass)(['xy-npc', { 'xy-npc-open': (0, l.unref)(Fe).openedNPC === e }]),
-                          onClick: (n) => ((0, l.unref)(Fe).openedNPC = (0, l.unref)(Fe).openedNPC === e ? null : e),
+                          class: (0, l.normalizeClass)(['xy-npc', { 'xy-npc-open': (0, l.unref)(Fe).openedNPC === e && (0, l.unref)(Fe).npcStage[e] === 2 }]),
+                          onClick: (n) => (0, l.unref)(xyNpcHead)(e),
                         },
                         [
                           (0, l.createElementVNode)('div', No, [
@@ -4850,7 +5223,7 @@ const Ll = (0, Ml.A)(Dl, [['__scopeId', 'data-v-510b2d48']]),
                               Wo,
                             ),
                           ]),
-                          (0, l.unref)(Fe).openedNPC === e
+                          (0, l.unref)(Fe).openedNPC === e && (0, l.unref)(Fe).npcStage[e] === 2
                             ? ((0, l.openBlock)(),
                               (0, l.createElementBlock)(
                                 'div',
@@ -6634,256 +7007,15 @@ const Ll = (0, Ml.A)(Dl, [['__scopeId', 'data-v-510b2d48']]),
                         ],
                         10,
                         vo,
-                      )))),
-                  ])
-                )),
-              ]),
-              [[l.vShow, gOpen]],
-            ),
+                      ));
+            })),
           ]);
-        };
-        const wildSection = () => {
-          const wOpen = !!(0, l.unref)(Fe).relationOpen['傀儡·灵兽'];
-          return h('section', { key: '傀儡·灵兽', class: 'xy-rel-group xy-rel-wild' }, [
-            h('button', { type: 'button', class: ['xy-collapse-head xy-rel-group-head', { open: wOpen }], onClick: (0, l.withModifiers)(() => (0, l.unref)(xyToggle)('relationOpen', '傀儡·灵兽'), ['stop']) }, [
-              h('span', { class: 'xy-collapse-title' }, '傀儡·灵兽'),
-              h('span', { class: 'xy-rel-group-count' }, (0, l.toDisplayString)(wild.length)),
-              caret(wOpen),
-            ]),
-            (0, l.withDirectives)(
-              h('div', { class: 'xy-rel-group-body' }, [
-                h(l.Fragment, null, wild.map(({ name: e, npc: n }) => (                      (0, l.openBlock)(),
-                      (0, l.createElementBlock)(
-                        'article',
-                        {
-                          key: 'wu-' + e,
-                          class: (0, l.normalizeClass)([
-                            'xy-npc xy-wild-unit',
-                            { 'xy-npc-open': (0, l.unref)(Fe).openedNPC === e },
-                          ]),
-                          onClick: (n) => ((0, l.unref)(Fe).openedNPC = (0, l.unref)(Fe).openedNPC === e ? null : e),
-                        },
-                        [
-                          (0, l.createElementVNode)('div', Ja, [
-                            (0, l.createElementVNode)(
-                              'span',
-                              { class: 'xy-wild-icon', title: n.类型 },
-                              (0, l.toDisplayString)('灵兽' === n.类型 ? '兽' : '傀'),
-                              9,
-                              eo,
-                            ),
-                            (0, l.createElementVNode)('div', no, [
-                              (0, l.createElementVNode)('div', to, [
-                                (0, l.createElementVNode)('span', lo, (0, l.toDisplayString)(e), 1),
-                                n.境界
-                                  ? ((0, l.openBlock)(),
-                                    (0, l.createElementBlock)('span', ao, (0, l.toDisplayString)(n.境界), 1))
-                                  : (0, l.createCommentVNode)('v-if', !0),
-                                n.在场
-                                  ? ((0, l.openBlock)(), (0, l.createElementBlock)('span', oo, '在场'))
-                                  : (0, l.createCommentVNode)('v-if', !0),
-                              ]),
-                              (0, l.createElementVNode)('div', ro, [
-                                (0, l.createElementVNode)('span', co, (0, l.toDisplayString)(n.类型), 1),
-                                n.品质
-                                  ? ((0, l.openBlock)(),
-                                    (0, l.createElementBlock)(
-                                      'span',
-                                      { key: 0, class: (0, l.normalizeClass)(['xy-wild-q-tag', 'xy-q-' + n.品质]) },
-                                      (0, l.toDisplayString)(n.品质) + '品',
-                                      3,
-                                    ))
-                                  : (0, l.createCommentVNode)('v-if', !0),
-                                n.五行
-                                  ? ((0, l.openBlock)(),
-                                    (0, l.createElementBlock)(
-                                      'span',
-                                      {
-                                        key: 1,
-                                        class: 'xy-element xy-element-mini',
-                                        style: (0, l.normalizeStyle)({ '--el': (0, l.unref)(sn)(n.五行) }),
-                                      },
-                                      (0, l.toDisplayString)('混沌' === n.五行 ? '混' : n.五行),
-                                      5,
-                                    ))
-                                  : (0, l.createCommentVNode)('v-if', !0),
-                              ]),
-                            ]),
-                            (0, l.createElementVNode)(
-                              'div',
-                              {
-                                class: (0, l.normalizeClass)(['xy-favor', (0, l.unref)(un)(n.好感度)]),
-                                onClick: r[0] || (r[0] = (0, l.withModifiers)(() => {}, ['stop'])),
-                              },
-                              [
-                                (0, l.createElementVNode)('div', so, [
-                                  (0, l.createVNode)(
-                                    xt,
-                                    {
-                                      modelValue: n.好感度,
-                                      'onUpdate:modelValue': (e) => (n.好感度 = e),
-                                      modelModifiers: { number: !0 },
-                                      type: 'number',
-                                      label: '好感度',
-                                      min: -100,
-                                      max: 100,
-                                    },
-                                    null,
-                                    8,
-                                    ['modelValue', 'onUpdate:modelValue'],
-                                  ),
-                                ]),
-                                (0, l.createElementVNode)(
-                                  'div',
-                                  io,
-                                  (0, l.toDisplayString)((0, l.unref)(dn)(n.好感度)),
-                                  1,
-                                ),
-                              ],
-                              2,
-                            ),
-                            (0, l.createElementVNode)(
-                              'button',
-                              {
-                                type: 'button',
-                                class: 'xy-trash xy-trash-npc',
-                                title: '删除此条目',
-                                onClick: (0, l.withModifiers)((n) => (0, l.unref)(at)('npc', e, e), ['stop']),
-                              },
-                              [
-                                ...(r[4] ||
-                                  (r[4] = [
-                                    (0, l.createElementVNode)(
-                                      'svg',
-                                      {
-                                        viewBox: '0 0 24 24',
-                                        width: '11',
-                                        height: '11',
-                                        fill: 'currentColor',
-                                        'aria-hidden': 'true',
-                                      },
-                                      [
-                                        (0, l.createElementVNode)('path', {
-                                          d: 'M9 3v1H4v2h16V4h-5V3H9zM6 8l1 13h10l1-13H6zm3 2h2v9H9v-9zm4 0h2v9h-2v-9z',
-                                        }),
-                                      ],
-                                      -1,
-                                    ),
-                                  ])),
-                              ],
-                              8,
-                              mo,
-                            ),
-                          ]),
-                          (0, l.unref)(Fe).openedNPC === e
-                            ? ((0, l.openBlock)(),
-                              (0, l.createElementBlock)(
-                                'div',
-                                {
-                                  key: 0,
-                                  class: 'xy-wild-body',
-                                  onClick: r[1] || (r[1] = (0, l.withModifiers)(() => {}, ['stop'])),
-                                },
-                                [
-                                  (0, l.createVNode)($l, { unit: n, name: String(e), compact: '' }, null, 8, [
-                                    'unit',
-                                    'name',
-                                  ]),
-                                  (0, l.unref)(o()).isEmpty(n.状态效果)
-                                    ? (0, l.createCommentVNode)('v-if', !0)
-                                    : ((0, l.openBlock)(),
-                                      (0, l.createElementBlock)('div', uo, [
-                                        r[5] || (r[5] = (0, l.createElementVNode)('h4', null, '状态效果', -1)),
-                                        (0, l.createElementVNode)('div', po, [
-                                          ((0, l.openBlock)(!0),
-                                          (0, l.createElementBlock)(
-                                            l.Fragment,
-                                            null,
-                                            (0, l.renderList)(
-                                              n.状态效果,
-                                              (e, n) => (
-                                                (0, l.openBlock)(),
-                                                (0, l.createElementBlock)(
-                                                  'div',
-                                                  {
-                                                    key: n,
-                                                    class: (0, l.normalizeClass)([
-                                                      'xy-buff-item',
-                                                      ['xy-buff-' + (e.类型 || '特殊')],
-                                                    ]),
-                                                  },
-                                                  [
-                                                    (0, l.createElementVNode)('div', fo, [
-                                                      (0, l.createElementVNode)(
-                                                        'span',
-                                                        yo,
-                                                        (0, l.toDisplayString)(n),
-                                                        1,
-                                                      ),
-                                                      (0, l.createElementVNode)(
-                                                        'span',
-                                                        ko,
-                                                        (0, l.toDisplayString)(e.类型),
-                                                        1,
-                                                      ),
-                                                      e.层数 > 1
-                                                        ? ((0, l.openBlock)(),
-                                                          (0, l.createElementBlock)(
-                                                            'span',
-                                                            Vo,
-                                                            'x' + (0, l.toDisplayString)(e.层数),
-                                                            1,
-                                                          ))
-                                                        : (0, l.createCommentVNode)('v-if', !0),
-                                                      (0, l.createElementVNode)(
-                                                        'span',
-                                                        bo,
-                                                        (0, l.toDisplayString)(e.剩余时间),
-                                                        1,
-                                                      ),
-                                                    ]),
-                                                    (0, l.unref)(o()).isEmpty(e.效果)
-                                                      ? (0, l.createCommentVNode)('v-if', !0)
-                                                      : ((0, l.openBlock)(),
-                                                        (0, l.createBlock)(
-                                                          _t,
-                                                          {
-                                                            key: 0,
-                                                            modelValue: e.效果,
-                                                            'onUpdate:modelValue': (n) => (e.效果 = n),
-                                                            'line-class': 'xy-buff-effect',
-                                                          },
-                                                          null,
-                                                          8,
-                                                          ['modelValue', 'onUpdate:modelValue'],
-                                                        )),
-                                                  ],
-                                                  2,
-                                                )
-                                              ),
-                                            ),
-                                            128,
-                                          )),
-                                        ]),
-                                      ])),
-                                ],
-                              ))
-                            : (0, l.createCommentVNode)('v-if', !0),
-                        ],
-                        10,
-                        Ka,
-                      )))),
-              ]),
-              [[l.vShow, wOpen]],
-            ),
-          ]);
-        };
         return h('section', { class: 'xy-page xy-page-relations' }, [
           (0, l.unref)(o()).isEmpty(allRel)
             ? h('div', { class: 'xy-empty' }, [h('div', { class: 'xy-empty-mark' }, '独'), h('p', null, '尚未结识任何人')])
-            : h('div', { class: 'xy-npc-list xy-relation-groups' }, [
-                wild.length ? wildSection() : null,
-                npcGroups.map(npcSection),
+            : h('div', { class: 'xy-rel-page' }, [
+                chips,
+                h('div', { class: 'xy-rel-scroll xy-scroll-area' }, visibleLevels.map(levelSection)),
               ]),
         ]);
       };
@@ -11625,7 +11757,8 @@ const ii = { key: 0, class: 'xy-refine-character-avatar' },
                                                                         8,
                                                                         Su,
                                                                       ),
-                                                                      (0, l.createElementVNode)('span', Du, [
+                                                                      (0, l.unref)(Fe).skillRecipeOpen[String(r)]
+        ? (0, l.createElementVNode)('span', Du, [
                                                                         (0, l.createVNode)(
                                                                           xt,
                                                                           {
@@ -11648,7 +11781,8 @@ const ii = { key: 0, class: 'xy-refine-character-avatar' },
                                                                             'onUpdate:modelValue',
                                                                           ],
                                                                         ),
-                                                                      ]),
+        ])
+        : (0, l.createCommentVNode)('v-if', !0),
                                                                     ],
                                                                     2,
                                                                   ),
@@ -11832,27 +11966,28 @@ const ii = { key: 0, class: 'xy-refine-character-avatar' },
                                                                                         'v-if',
                                                                                         !0,
                                                                                       ),
-                                                                                  (0, l.unref)(o()).isEmpty(e.it.效果)
-                                                                                    ? (0, l.createCommentVNode)(
-                                                                                        'v-if',
-                                                                                        !0,
-                                                                                      )
-                                                                                    : ((0, l.openBlock)(),
-                                                                                      (0, l.createElementBlock)(
-                                                                                        'div',
-                                                                                        Fu,
-                                                                                        [
-                                                                                          (0, l.createVNode)(
-                                                                                            _t,
-                                                                                            {
-                                                                                              'model-value': e.it.效果,
-                                                                                            },
-                                                                                            null,
-                                                                                            8,
-                                                                                            ['model-value'],
-                                                                                          ),
-                                                                                        ],
-                                                                                      )),
+                                                                (0, l.unref)(o()).isEmpty(e.it.效果)
+                    ? (0, l.createCommentVNode)('v-if', !0)
+                    : l.h('div', { class: 'xy-effect-fold' }, [
+                        l.h('button', { type: 'button', class: ['xy-collapse-head xy-collapse-sub', { open: !!(0, l.unref)(Fe).recipeOpen[e.name + '::效果'] }], onClick: (0, l.withModifiers)(() => (0, l.unref)(xyToggle)('recipeOpen', String(e.name) + '::效果'), ['stop']) }, [
+                          l.h('span', { class: 'xy-collapse-title' }, '效果'),
+                          l.h('span', { class: 'xy-collapse-count' }, (0, l.toDisplayString)(Object.keys(e.it.效果 || {}).length)),
+                          l.h('span', { class: 'xy-collapse-caret' }, (0, l.unref)(Fe).recipeOpen[e.name + '::效果'] ? '▾' : '▸'),
+                        ]),
+                        (0, l.withDirectives)(
+                          l.h('div', { class: 'xy-effect-rows' }, Object.entries(e.it.效果 || {}).map(([en, ed]) => {
+                            const rowOpen = !!(0, l.unref)(Fe).recipeOpen[e.name + '::效果::' + en];
+                            return l.h('div', { key: en, class: ['xy-effect-row', { open: rowOpen }] }, [
+                              l.h('button', { type: 'button', class: 'xy-effect-row-head', onClick: (0, l.withModifiers)(() => (0, l.unref)(xyToggle)('recipeOpen', String(e.name) + '::效果::' + en), ['stop']) }, [
+                                l.h('span', { class: 'xy-effect-row-name' }, (0, l.toDisplayString)(en)),
+                                l.h('span', { class: 'xy-collapse-caret' }, rowOpen ? '▾' : '▸'),
+                              ]),
+                              rowOpen ? l.h('div', { class: 'xy-effect-row-desc' }, (0, l.toDisplayString)(ed)) : null,
+                            ]);
+                          })),
+                          [[l.vShow, !!(0, l.unref)(Fe).recipeOpen[e.name + '::效果']]],
+                        ),
+                      ]),
                                                                                     ])
                                                                                     : (0, l.createCommentVNode)('v-if', !0),
                                                                                 ])
@@ -11927,7 +12062,7 @@ const ii = { key: 0, class: 'xy-refine-character-avatar' },
                         ],
                         512,
                       ),
-                      [[l.vShow, !(0, l.unref)(Fe).appCollapsed]],
+                      [[l.vShow, !0]],
                     ),
                   ],
                   2,
@@ -12123,6 +12258,20 @@ const ii = { key: 0, class: 'xy-refine-character-avatar' },
       );
     },
   });
+(function () {
+  if ('undefined' == typeof document || !document.addEventListener) return;
+  var t0 = new WeakMap();
+  document.addEventListener('scroll', function (ev) {
+    var t = ev.target;
+    if (!t || !t.classList || !t.classList.contains('xy-scroll-area')) return;
+    t.classList.add('xy-scrolling');
+    var old = t0.get(t);
+    old && clearTimeout(old);
+    t0.set(t, setTimeout(function () {
+      t.classList.remove('xy-scrolling');
+    }, 700));
+  }, !0);
+})();
 let Ru = !1;
 $(async () => {
   Ru ||
@@ -12171,11 +12320,25 @@ $(async () => {
   gap: 8px;
 }
 
+/* 储物头部的类型/品阶/境界标签：文字始终在标签框内居中（含换行竖排时） */
+.xy-art-flat-head .xy-pill,
+.xy-art-flat-head .xy-quality,
+.xy-item-flat-head .xy-pill,
+.xy-item-flat-head .xy-quality,
+.xy-unit-flat-head .xy-pill,
+.xy-unit-flat-head .xy-quality {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.3;
+}
+
 .xy-art-flat-toggle,
 .xy-item-flat-toggle,
 .xy-unit-flat-toggle,
 .xy-asset-flat-toggle,
-.xy-facility-flat-toggle,
+.xy-facility-bldg-toggle,
 .xy-recipe-head {
   flex: 1 1 auto;
   display: flex;
@@ -12191,7 +12354,17 @@ $(async () => {
   text-align: left;
 }
 
-.xy-art-flat-name,
+/* 功法名完整显示（可换行） */
+.xy-art-flat-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  word-break: break-word;
+  font-family: var(--xy-font-display);
+  font-size: 15px;
+  letter-spacing: 1px;
+}
+
 .xy-item-flat .xy-item-name,
 .xy-unit-flat .xy-item-name,
 .xy-asset-name,
@@ -12201,7 +12374,7 @@ $(async () => {
   white-space: nowrap;
   text-overflow: ellipsis;
   font-family: var(--xy-font-display);
-  font-size: 15px;
+  font-size: 14px;
   letter-spacing: 1px;
 }
 
@@ -12246,23 +12419,38 @@ $(async () => {
   color: var(--xy-ink-mute);
 }
 
-/* 效果 / 技能子折叠 */
+.xy-collapse-count {
+  font-size: 11px;
+  color: var(--xy-ink-mute);
+}
+
+/* 圆形标识已移除，恢复原方形 pill/quality 样式 */
+
+/* ===== 效果三级折叠 ===== */
 .xy-effect-fold {
   margin-top: 6px;
 }
 
-.xy-skill-fold {
-  margin-top: 6px;
-  padding: 4px 8px;
-  border: 1px dashed var(--xy-line);
-  border-radius: 6px;
+.xy-effect-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 4px;
 }
 
-.xy-skill-fold-head {
+.xy-effect-row {
+  border: 1px dashed var(--xy-line);
+  border-left: 2px solid var(--xy-jade);
+  border-radius: 4px;
+  background: var(--xy-tint-jade-faint);
+}
+
+.xy-effect-row-head {
   display: flex;
   align-items: center;
   gap: 6px;
   width: 100%;
+  padding: 3px 8px;
   background: transparent;
   border: 0;
   cursor: pointer;
@@ -12271,52 +12459,142 @@ $(async () => {
   text-align: left;
 }
 
-.xy-skill-line-effects {
-  margin-top: 4px;
+.xy-effect-row-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--xy-font-display);
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--xy-ink);
 }
 
-/* ===== 关系分组 ===== */
-.xy-rel-group,
-.xy-asset-group {
+.xy-effect-row-desc {
+  padding: 2px 8px 5px 18px;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--xy-ink-soft);
+  overflow-wrap: anywhere;
+}
+
+/* ===== 标签：竖排（禁止3个一排） ===== */
+.xy-tags-col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 6px;
+}
+
+.xy-tag-row {
+  padding: 2px 8px;
+  border: 1px dashed var(--xy-line);
+  border-radius: 4px;
+  font-size: 11.5px;
+  color: var(--xy-ink-soft);
+  overflow-wrap: anywhere;
+}
+
+/* ===== 描述与效果：允许折行，防止外溢 ===== */
+.xy-item-flat .xy-item-desc,
+.xy-art-flat .xy-art-desc,
+.xy-item-flat .xy-effect-row-desc,
+.xy-art-flat .xy-effect-row-desc {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.xy-item-flat .xy-item-meta,
+.xy-art-flat .xy-art-flat-meta {
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
+}
+
+/* 紧凑布局：折叠行更矮，列表不拖太长 */
+.xy-item-grid,
+.xy-art-grid {
+  gap: 6px;
+}
+
+@media (min-width: 600px) {
+  .xy-item-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.xy-item-flat:not(.open) .xy-item-flat-toggle,
+.xy-art-flat:not(.open) .xy-art-flat-toggle,
+.xy-unit-flat:not(.open) .xy-unit-flat-toggle {
+  padding: 3px 2px;
+}
+
+/* ===== 关系：标头小分类 + 人物方块三态 ===== */
+.xy-rel-page {
+  padding-top: 4px;
+}
+
+.xy-rel-chips {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
   margin-bottom: 10px;
 }
 
-.xy-rel-group-head,
-.xy-asset-group-head {
-  font-size: 13px;
+.xy-rel-chips .xy-chip {
+  padding: 5px 4px;
+  text-align: center;
+  font-size: 11.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.xy-rel-group-count,
-.xy-rel-level-count {
-  margin-left: auto;
-  font-size: 11px;
-  color: var(--xy-ink-mute);
-}
-
-.xy-rel-group-body,
-.xy-asset-group-body {
-  padding: 8px 0 2px;
-}
-
-.xy-rel-level {
-  margin-bottom: 8px;
-}
-
-.xy-rel-level-head {
-  display: flex;
-  align-items: center;
+.xy-npc-stage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(74px, 1fr));
   gap: 8px;
-  padding: 2px 8px;
+  padding: 6px 2px;
 }
 
-.xy-rel-level-label {
+/* 点击后卡片占满整行（宽度变化） */
+.xy-npc-stage-grid > .xy-npc,
+.xy-npc-stage-grid > .xy-wild-unit {
+  grid-column: 1 / -1;
+}
+
+.xy-npc-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 9px 4px 7px;
+  background: var(--xy-glass);
+  border: 1px solid var(--xy-line-gold);
+  border-radius: 6px;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  transition: all 0.18s ease;
+}
+
+.xy-npc-box:hover {
+  border-color: var(--xy-gold);
+  transform: translateY(-1px);
+}
+
+.xy-npc-box-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-family: var(--xy-font-display);
   font-size: 12px;
-  letter-spacing: 2px;
-  color: var(--xy-gold-deep);
+  letter-spacing: 1px;
+  color: var(--xy-cinnabar);
 }
 
-/* 关系卡片：折叠态只突出名字 */
+/* 关系卡片折叠态精简（仅名字） */
 .xy-npc:not(.xy-npc-open) .xy-npc-line2,
 .xy-npc:not(.xy-npc-open) .xy-npc-avatar-cam {
   display: none;
@@ -12337,10 +12615,6 @@ $(async () => {
   font-size: 14px;
 }
 
-.xy-npc:not(.xy-npc-open) .xy-npc-line1 {
-  gap: 6px;
-}
-
 .xy-npc:not(.xy-npc-open) .xy-favor {
   flex: 0 0 auto;
   padding: 2px 8px;
@@ -12350,28 +12624,310 @@ $(async () => {
   font-size: 13px;
 }
 
-.xy-npc:not(.xy-npc-open) .xy-npc-online {
-  font-size: 9px;
-  padding: 1px 5px;
-}
-
 .xy-wild-unit:not(.xy-npc-open) .xy-wild-icon {
   width: 34px;
   height: 34px;
   font-size: 15px;
 }
 
-/* ===== 资产分组折叠 ===== */
+/* ===== 资产：设施行折叠 + 所属人物折叠 ===== */
+.xy-asset-page {
+  padding-top: 4px;
+}
+
+.xy-asset-group {
+  margin-bottom: 10px;
+}
+
 .xy-asset-group-head {
+  font-size: 13px;
   letter-spacing: 2px;
 }
 
-.xy-asset-flat {
-  margin-bottom: 8px;
+.xy-rel-group-count {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--xy-ink-mute);
 }
 
-.xy-asset-flat .xy-asset-loc {
+.xy-asset-group-body {
+  padding: 8px 0 2px;
+}
+
+.xy-facility-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.xy-facility-row {
+  border: 1px dashed var(--xy-line);
+  border-left: 2px solid var(--xy-jade);
+  border-radius: 4px;
+  background: var(--xy-tint-jade-faint);
+}
+
+.xy-facility-row-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 3px 8px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.xy-facility-row-toggle .xy-facility-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--xy-font-display);
+  font-size: 12.5px;
+  letter-spacing: 1px;
+  color: var(--xy-ink);
+}
+
+.xy-facility-row.open {
+  border-color: var(--xy-line-gold);
+  border-left-color: var(--xy-jade);
+  background: var(--xy-tint-jade-faint);
+}
+
+.xy-facility-yield {
+  color: var(--xy-cinnabar);
+  font-size: 11px;
+}
+
+.xy-facility-row-body {
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px dashed var(--xy-line);
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--xy-ink-soft);
+  overflow-wrap: anywhere;
+}
+
+/* ===== 资产：方块罗列（按 宗门/店铺/洞府 类型样式） ===== */
+.xy-asset-block-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.xy-asset-block {
+  position: relative;
+  min-width: 0;
+  min-height: 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 6px;
+  border: 1px solid var(--xy-line);
+  border-radius: 8px;
+  background: var(--xy-glass);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.xy-asset-block:hover,
+.xy-asset-block.open {
+  border-color: var(--xy-gold);
+  box-shadow: 0 4px 12px -6px rgba(89, 64, 28, 0.3);
+}
+
+.xy-asset-block-toggle {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
+  padding: 2px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+}
+
+.xy-asset-block .xy-trash {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  z-index: 2;
+}
+
+.xy-asset-seal {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-family: var(--xy-font-display);
+  font-size: 16px;
+  color: var(--xy-paper);
+  border: 1px solid;
+  flex: 0 0 auto;
+}
+
+.xy-asset-宗门 .xy-asset-seal {
+  background: linear-gradient(135deg, var(--xy-cinnabar), var(--xy-cinnabar-deep));
+  border-color: var(--xy-cinnabar-deep);
+}
+
+.xy-asset-店铺 .xy-asset-seal {
+  background: linear-gradient(135deg, var(--xy-gold), var(--xy-gold-deep));
+  border-color: var(--xy-gold-deep);
+}
+
+.xy-asset-洞府 .xy-asset-seal {
+  background: linear-gradient(135deg, var(--xy-jade), var(--xy-jade-deep));
+  border-color: var(--xy-jade-deep);
+}
+
+.xy-asset-block-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--xy-font-display);
+  font-size: 12.5px;
+  letter-spacing: 1px;
+  color: var(--xy-ink);
+}
+
+.xy-asset-block .xy-asset-loc {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 10px;
+}
+
+/* 展开：整行完整方框 */
+.xy-asset-block.open {
+  grid-column: 1 / -1;
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+.xy-asset-block.open .xy-asset-block-toggle {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: left;
+  gap: 8px;
+  padding: 2px 4px;
+}
+
+.xy-asset-block.open .xy-asset-block-name {
+  flex: 1 1 auto;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.xy-asset-block.open .xy-asset-flat-body {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--xy-line);
+}
+
+@media (max-width: 560px) {
+  .xy-asset-block-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ===== 竖向滚动条：储物/关系/资产（头部固定，内容区滚动，仅滚动时显示） ===== */
+.xy-page-storage,
+.xy-page-relations,
+.xy-page-assets {
+  max-height: 64vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.xy-page-storage > .xy-stone,
+.xy-page-storage > .xy-storage-tabs,
+.xy-rel-chips,
+.xy-asset-chips {
+  flex: 0 0 auto;
+}
+
+.xy-rel-page,
+.xy-asset-page {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.xy-page-storage > :not(.xy-stone):not(.xy-storage-tabs),
+.xy-rel-scroll,
+.xy-asset-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.xy-scroll-area.xy-scrolling {
+  scrollbar-color: var(--xy-tint-cinnabar-strong) transparent;
+}
+
+.xy-scroll-area::-webkit-scrollbar {
+  width: 6px;
+}
+
+.xy-scroll-area::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.xy-scroll-area.xy-scrolling::-webkit-scrollbar-thumb {
+  background: var(--xy-tint-cinnabar-strong);
+}
+
+/* ===== 默认折叠：只显示人物数据面板，页签与内容收起 ===== */
+.xy-scroll-collapsed .xy-tabs,
+.xy-scroll-collapsed .xy-content {
+  display: none !important;
+}
+
+/* ===== 传闻印章：竖排文字居中 ===== */
+.xy-rumor-seal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.xy-rumor-seal span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: auto;
+}
+
+.xy-people-fold {
+  margin-top: 8px;
+}
+
+.xy-people-body {
+  margin-top: 5px;
 }
 
 .xy-asset-status,
@@ -12383,35 +12939,155 @@ $(async () => {
   margin-bottom: 6px;
 }
 
-.xy-asset-status-label {
+/* ===== 装备二级位置筛选 ===== */
+.xy-filter-sub {
+  margin-top: 4px;
+}
+
+.xy-chip-sub {
   font-size: 11px;
-  color: var(--xy-ink-mute);
+  padding: 3px 10px;
 }
 
-.xy-facility-flat {
-  margin-top: 6px;
+/* ===== 技艺：原版紧凑方框（点击展开为长条） ===== */
+.xy-skill-panel .xy-skill-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px 8px;
 }
 
-.xy-facility-flat-body {
-  margin-top: 5px;
-  padding-top: 5px;
-  border-top: 1px dashed var(--xy-line);
+.xy-skill-panel .xy-skill {
+  position: relative;
+  min-width: 0;
+  min-height: 66px;
+  aspect-ratio: auto;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-rows: 1fr auto;
+  gap: 2px 5px;
+  align-items: center;
+  padding: 6px 7px;
+  overflow: hidden;
+  border: 1px solid var(--xy-line);
+  border-radius: 7px;
+  background: var(--xy-glass);
+  font-size: 12px;
 }
 
-/* ===== 技艺数值过大：允许折行，避免重叠 ===== */
+.xy-skill-panel .xy-skill:hover,
+.xy-skill-panel .xy-skill.open {
+  border-color: var(--xy-gold);
+  box-shadow: 0 4px 12px -6px rgba(89, 64, 28, 0.3);
+}
+
+.xy-skill-panel .xy-skill-toggle {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  align-self: stretch;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-rows: 1fr auto;
+  gap: 2px 5px;
+  align-items: center;
+  padding: 0;
+}
+
+.xy-skill-panel .xy-skill-seal {
+  grid-row: 1 / 3;
+  grid-column: 1;
+  width: 34px;
+  height: 34px;
+}
+
+.xy-skill-panel .xy-skill-seal > span {
+  width: 27px;
+  height: 27px;
+  font-size: 12px;
+}
+
+.xy-skill-panel .xy-skill-name {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: end;
+  min-width: 0;
+  padding-right: 2px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: left;
+  color: var(--xy-ink);
+  font-family: var(--xy-font-display);
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+.xy-skill-panel .xy-skill:not(.open) .xy-skill-name {
+  align-self: center;
+}
+
+.xy-skill-panel .xy-skill:has(.xy-skill-recipe-count) .xy-skill-name {
+  padding-right: 34px;
+}
+
+.xy-skill-panel .xy-skill-recipe-count {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 2;
+  padding: 1px 5px;
+  border: 1px solid var(--xy-line-gold);
+  border-radius: 7px;
+  background: var(--xy-paper-warm);
+  color: var(--xy-gold-deep);
+  font-size: 8px;
+  line-height: 1.25;
+}
+
 .xy-skill-panel .xy-skill-num {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: start;
+  min-width: 0;
+  max-width: 100%;
+  text-align: left;
+  color: var(--xy-gold-deep);
+  font-family: var(--xy-font-display);
+  font-size: 14px;
+  line-height: 16px;
   white-space: normal;
   overflow-wrap: anywhere;
   word-break: break-all;
-  line-height: 1.2;
+  position: relative;
+  z-index: 2;
+  margin-top: 2px;
 }
 
 .xy-skill-panel .xy-skill-num .xy-editable {
   max-width: 100%;
 }
 
-.xy-skill-panel .xy-skill {
-  min-height: 64px;
+/* 展开：整行长方条 */
+.xy-skill-panel .xy-skill-wrap:has(.xy-skill.open) .xy-skill {
+  min-height: 66px;
+  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-rows: 1fr auto;
+  justify-items: stretch;
+  align-items: start;
+  padding: 6px 8px;
+}
+
+.xy-skill-panel .xy-skill-wrap:has(.xy-skill.open) .xy-skill-toggle {
+  grid-template-rows: 20px 1fr;
+  align-items: start;
+}
+
+.xy-skill-panel .xy-skill-wrap:has(.xy-skill.open) .xy-skill-name {
+  align-self: start;
+  line-height: 20px;
+}
+
+.xy-skill-panel .xy-skill-wrap:has(.xy-skill.open) .xy-skill-num {
+  align-self: start;
+  margin-top: 3px;
 }
 
 /* ===== 配方折叠卡 ===== */
@@ -12435,9 +13111,13 @@ $(async () => {
   }
 
   .xy-item-grid,
-  .xy-art-grid,
-  .xy-skill-panel .xy-skill-grid {
+  .xy-art-grid {
     grid-template-columns: 1fr;
+  }
+
+  .xy-skill-panel .xy-skill-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px 5px;
   }
 
   .xy-npc-head {
