@@ -1879,6 +1879,7 @@ body,html{margin:0;padding:0}
     display: flex;
     flex-wrap: wrap;
     align-items: center;
+    justify-content: space-between;
     gap: 4px;
     margin-bottom: 6px;
   }
@@ -1889,7 +1890,7 @@ body,html{margin:0;padding:0}
   .xy-filter-drill .xy-chip,
   .xy-filter-drill .xy-chip-back,
   .xy-filter-drill .xy-chip-sub {
-    flex: 1 1 auto;
+    flex: 0 0 auto;
     text-align: center;
     white-space: nowrap;
   }
@@ -2066,11 +2067,11 @@ body,html{margin:0;padding:0}
     line-height: 13px;
   }
 
-  /* 传闻：285 档压缩，防止外溢 */
-  .xy-rumor {
-    padding: 10px 10px 10px 62px;
-    min-height: 74px;
-  }
+/* 传闻：285 档压缩，防止外溢 */
+.xy-rumor {
+  padding: 10px 10px 10px 62px;
+  min-height: 74px;
+}
 
   .xy-rumor-seal {
     left: 8px;
@@ -2086,7 +2087,34 @@ body,html{margin:0;padding:0}
   }
 
   .xy-rumor-time {
-    font-size: 10px;
+    font-size: 9px;
+    letter-spacing: 0;
+  }
+
+  /* 竖屏：难度（境界）置顶一行，秘境印章与时间横排在其下方 */
+  @media (max-width: 700px) {
+    .xy-rumor-head {
+      flex-wrap: wrap;
+    }
+
+    .xy-rumor-difficulty {
+      order: 0;
+      margin-left: auto;
+      margin-bottom: 4px;
+    }
+
+    .xy-rumor-meta {
+      order: 1;
+      flex: 1 1 auto;
+      min-width: 0;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+    }
+
+    .xy-rumor-seal {
+      top: 36px;
+    }
   }
 
   .xy-skill-panel .xy-skill-wrap:has(.xy-skill.open) .xy-skill {
@@ -10722,7 +10750,10 @@ This will fail in production.`);
                     },
                     [
                       h3("span", { class: ["xy-item-name", nameSz(name)] }, (0, l.toDisplayString)(nameLines(name))),
-                      h3("span", { class: "xy-item-qty" }, ["\xD7", h3(xt, { modelValue: it2.\u6570\u91CF, "onUpdate:modelValue": (v2) => it2.\u6570\u91CF = v2, modelModifiers: { number: true }, type: "number", label: "\u6570\u91CF", min: 0 })]),
+                      h3("span", { class: "xy-item-qty" }, ["\xD7", h3(xt, { modelValue: it2.\u6570\u91CF, "onUpdate:modelValue": (v2) => it2.\u6570\u91CF = v2, modelModifiers: { number: true }, type: "number", label: "\u6570\u91CF", min: 0, format: (v2) => {
+                        const n2 = Number(v2) || 0;
+                        return n2 >= 1e8 ? String(Math.round(n2 / 1e8 * 100) / 100) + "\u4EBF" : n2 >= 1e4 ? String(Math.round(n2 / 1e4 * 100) / 100) + "\u4E07" : String(n2);
+                      } })]),
                       it2.\u54C1\u8D28 ? h3("span", { class: ["xy-quality", "xy-q-" + it2.\u54C1\u8D28], title: it2.\u54C1\u8D28 + "\u54C1" }, (0, l.toDisplayString)(it2.\u54C1\u8D28) + "\u54C1") : null,
                       caret(showBody)
                     ]
