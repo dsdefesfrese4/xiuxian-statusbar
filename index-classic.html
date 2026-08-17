@@ -44,7 +44,7 @@ body,html{margin:0;padding:0}
 .xy-art-flat-head,
 .xy-unit-flat-head {
   display: grid;
-  grid-template-columns: 65px 56px 48px 10px;
+  grid-template-columns: 65px 56px 48px minmax(0, 1fr);
   grid-template-rows: auto auto;
   align-items: center;
   gap: 2px 4px;
@@ -77,7 +77,7 @@ body,html{margin:0;padding:0}
 .xy-unit-flat-head > .xy-collapse-caret {
   grid-column: 4;
   grid-row: 1 / -1;
-  justify-self: center;
+  justify-self: end;
   align-self: center;
   margin-left: 0;
   cursor: pointer;
@@ -97,11 +97,11 @@ body,html{margin:0;padding:0}
 
 /* 功法头部右侧预留空间，避免运转/删除按钮重叠出框 */
 .xy-art-flat-head {
-  padding-right: 24px;
+  padding-right: 0;
 }
 
 .xy-unit-flat-head {
-  padding-right: 24px;
+  padding-right: 0;
 }
 
 /* 灵兽/傀儡五行属性标签缩小 */
@@ -1344,10 +1344,10 @@ body,html{margin:0;padding:0}
   }
 
   .xy-npc .xy-npc-avatar {
-    flex: 0 0 32px;
-    width: 32px;
-    height: 32px;
-    font-size: 14px;
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    font-size: 17px;
   }
 
   .xy-npc:not(.xy-npc-open) .xy-npc-head {
@@ -1739,7 +1739,7 @@ body,html{margin:0;padding:0}
 @media (max-width: 320px) {
   .xy-art-flat-head,
   .xy-unit-flat-head {
-    grid-template-columns: 48px 48px 40px 10px;
+    grid-template-columns: 48px 48px 40px minmax(0, 1fr);
   }
 
   .xy-art-flat-toggle,
@@ -1992,6 +1992,25 @@ body,html{margin:0;padding:0}
   .xy-unit-flat .xy-effect-line {
     font-size: 8.5px;
     padding: 1px 4px;
+  }
+
+  /* 灵兽/傀儡展开后的防御绿字缩小（作用域样式需更高优先级） */
+  .xy-unit-flat .xy-unit-stats .xy-eq-stat {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    height: 13px;
+    line-height: 13px;
+    box-sizing: border-box;
+    font-size: 8px;
+    padding: 0 5px;
+  }
+
+  .xy-unit-flat .xy-unit-stats .xy-eq-stat .xy-editable {
+    display: inline-flex;
+    align-items: center;
+    line-height: 13px;
   }
 
   .xy-skill-panel .xy-skill-wrap:has(.xy-skill.open) .xy-skill {
@@ -10910,7 +10929,12 @@ This will fail in production.`);
             const caret = (op) => h3("span", { class: "xy-collapse-caret" }, op ? "\u25BE" : "\u25B8");
             const allRel = (0, l.unref)(n).data.\u5173\u7CFB\u5217\u8868 || {};
             const filter = (0, l.unref)(Fe).relationFilter;
+            const xyNpcCloseOthers = (nm2) => {
+              const st2 = (0, l.unref)(Fe).npcStage;
+              for (const k2 in st2) if (k2 !== nm2) st2[k2] = 0;
+            };
             const xyNpcBox = (nm2) => {
+              (0, l.unref)(xyNpcCloseOthers)(nm2);
               (0, l.unref)(Fe).npcStage[nm2] = 2;
               (0, l.unref)(Fe).openedNPC = nm2;
             };
@@ -10920,6 +10944,7 @@ This will fail in production.`);
                 (0, l.unref)(Fe).npcStage[nm2] = 0;
                 (0, l.unref)(Fe).openedNPC = null;
               } else {
+                (0, l.unref)(xyNpcCloseOthers)(nm2);
                 (0, l.unref)(Fe).npcStage[nm2] = 2;
                 (0, l.unref)(Fe).openedNPC = nm2;
               }
